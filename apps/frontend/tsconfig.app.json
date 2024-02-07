@@ -1,0 +1,29 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc",
+    "types": [
+      "node",
+      "@nx/react/typings/cssmodule.d.ts",
+      "@nx/react/typings/image.d.ts",
+      "vite/client"
+    ],
+    "paths": {
+      "src/api/*": ["apps/frontend/src/api/*"],
+      "src/api": ["apps/frontend/src/api/index.ts"],
+      "src/components/*": ["apps/frontend/src/components/*"],
+      "src/config/*": ["apps/frontend/src/config/*"],
+      "src/hooks/*": ["apps/frontend/src/hooks/*"],
+      "src/pages/*": ["apps/frontend/src/pages/*"],
+      "src/store/*": ["apps/frontend/src/store/*"],
+      "src/store": ["apps/frontend/src/store/index.ts"],
+      "src/styles/*": ["apps/frontend/src/styles/*"],
+      "src/types/*": ["apps/frontend/src/types/*"],
+      "src/utils/*": ["apps/frontend/src/utils/*"],
+      "src/pixi/*": ["apps/frontend/src/pixi/*"],
+      "@pinball/shared": ["apps/shared/src/index.ts"],
+      "@pinball/engine": ["apps/engine/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]
+}
