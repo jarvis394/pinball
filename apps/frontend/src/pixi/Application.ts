@@ -3,18 +3,15 @@ import * as PIXI from 'pixi.js'
 PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST
 
 export default class Application extends PIXI.Application<HTMLCanvasElement> {
-  constructor(
-    element?: HTMLDivElement | null,
-    props?: PIXI.IApplicationOptions
-  ) {
+  constructor(element: HTMLDivElement, props?: PIXI.IApplicationOptions) {
     super({
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width: element.clientWidth,
+      height: element.clientHeight,
       resolution: window.devicePixelRatio || 1,
       backgroundAlpha: 0,
       antialias: true,
       autoDensity: true,
-      resizeTo: window,
+      resizeTo: element,
       ...props,
     })
 

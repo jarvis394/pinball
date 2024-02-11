@@ -5,10 +5,10 @@ import ScenesController from '../../pixi/ScenesController'
 import { SCENES } from '../../pixi/scenes'
 // import { loadAssets } from '../../assets'
 import useMountEffect from '../../hooks/useMountEffect'
-import axios from 'axios'
+import { singleplayerMap } from '@pinball/shared'
 
 export const PIXI_CANVAS_CONTAINER_ID = 'pixi-container'
-export const MATTER_CANVAS_CONTAINER_ID = 'matter-container'
+export const MATTER_CANVAS_ID = 'matter-canvas'
 
 const App: React.FC = () => {
   const canvasContainer = useRef<HTMLDivElement>(null)
@@ -16,12 +16,16 @@ const App: React.FC = () => {
 
   useMountEffect(() => {
     engine.current = new Engine()
+
+    if (!canvasContainer.current) {
+      throw new Error('No pixi canvas container found in DOM')
+    }
+
     const app = new Application(canvasContainer.current)
     const scenesController = new ScenesController(app, engine.current)
 
     const start = async () => {
-      const mapData = (await axios('/map.txt')).data
-      engine.current?.game.loadMap(mapData)
+      engine.current?.game.loadMap(singleplayerMap)
       // await loadAssets()
       await scenesController.loadScene(SCENES.MainScene)
     }
@@ -30,15 +34,22 @@ const App: React.FC = () => {
 
     return () => {
       engine.current?.destroy()
+      scenesController.destroy()
       app.destroy(true)
     }
   })
 
   return (
-    <>
-      <div id={PIXI_CANVAS_CONTAINER_ID} ref={canvasContainer} />
+    <div
+      id={PIXI_CANVAS_CONTAINER_ID}
+      style={{
+        width: '100%',
+        height: '100%',
+      }}
+      ref={canvasContainer}
+    >
       <canvas
-        id={MATTER_CANVAS_CONTAINER_ID}
+        id={MATTER_CANVAS_ID}
         style={{
           width: '100%',
           height: '100%',
@@ -47,9 +58,10 @@ const App: React.FC = () => {
           left: 0,
           overflow: 'hidden',
           pointerEvents: 'none',
+          zIndex: 1,
         }}
       />
-    </>
+    </div>
   )
 }
 

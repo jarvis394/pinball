@@ -1699,6 +1699,11 @@
   resolved "https://registry.yarnpkg.com/@pixi/filter-noise/-/filter-noise-7.3.3.tgz#8629625212a03fc84145f7951e71322940fad56a"
   integrity sha512-Hwwk1xLvA+0wTqJtKTnIGzyZmLubm5ylgqsMRHQqujDtVSIqE2SY1iVUcGA5vv31C7rFFkxGT4yhtfnYBNCvKQ==
 
+"@pixi/filter-outline@^5.2.0":
+  version "5.2.0"
+  resolved "https://registry.yarnpkg.com/@pixi/filter-outline/-/filter-outline-5.2.0.tgz#8572ed2c847c31c5a142db04e86f081baed0365a"
+  integrity sha512-xKfAouhZNKl6A0RvxT5i+2/ean7r16dE/QswwIkbWvr2hhHlp4p9U6XsqdgUERCDxK+IZibMAumbWs4DGxOUeQ==
+
 "@pixi/graphics@7.3.3":
   version "7.3.3"
   resolved "https://registry.yarnpkg.com/@pixi/graphics/-/graphics-7.3.3.tgz#3f9d3c4ff4875dd8cf67fc3db9ea9bc63e4c795c"
@@ -2125,6 +2130,11 @@
   integrity sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==
   dependencies:
     defer-to-connect "^2.0.0"
+
+"@thednp/dommatrix@^2.0.6":
+  version "2.0.6"
+  resolved "https://registry.yarnpkg.com/@thednp/dommatrix/-/dommatrix-2.0.6.tgz#648fa828d1de7e3cb7f0c23f526f804c713a8236"
+  integrity sha512-DXQq4Rs/akYzeXYGkNy3KiJ4JoD8+SYr1QRWTXtAGoZ0+vJcyBt0aeqA1K4CxPaBaIfKdOTE+Te1HV9sAQ4I4A==
 
 "@tokenizer/token@^0.3.0":
   version "0.3.0"
@@ -5182,6 +5192,11 @@ parse-json@^5.0.0, parse-json@^5.2.0:
     json-parse-even-better-errors "^2.3.0"
     lines-and-columns "^1.1.6"
 
+path-data-parser@0.1.0:
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/path-data-parser/-/path-data-parser-0.1.0.tgz#8f5ba5cc70fc7becb3dcefaea08e2659aba60b8c"
+  integrity sha512-NOnmBpt5Y2RWbuv0LMzsayp3lVylAHLPUTut412ZA3l+C4uw4ZVkQbjShYCQ8TCpUMdPapr4YjUqLYD6v68j+w==
+
 path-exists@^4.0.0:
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/path-exists/-/path-exists-4.0.0.tgz#513bdbe2d3b95d7762e8c1137efa195c6c61b5b3"
@@ -5292,6 +5307,19 @@ pixi.js@^7.3.3:
     "@pixi/text" "7.3.3"
     "@pixi/text-bitmap" "7.3.3"
     "@pixi/text-html" "7.3.3"
+
+points-on-curve@0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/points-on-curve/-/points-on-curve-0.2.0.tgz#7dbb98c43791859434284761330fa893cb81b4d1"
+  integrity sha512-0mYKnYYe9ZcqMCWhUjItv/oHjvgEsfKvnUTg8sAtnHr3GVy7rGkXCb6d5cSyqrWqL4k81b9CPg3urd+T7aop3A==
+
+points-on-path@^0.2.1:
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/points-on-path/-/points-on-path-0.2.1.tgz#553202b5424c53bed37135b318858eacff85dd52"
+  integrity sha512-25ClnWWuw7JbWZcgqY/gJ4FQWadKxGWk+3kR/7kD0tCaDtPPMj7oHu2ToLaVhfpnHrZzYby2w6tUA0eOIuUg8g==
+  dependencies:
+    path-data-parser "0.1.0"
+    points-on-curve "0.2.0"
 
 poly-decomp-es@^0.4.2:
   version "0.4.2"
@@ -5995,6 +6023,13 @@ svg-parser@^2.0.4:
   version "2.0.4"
   resolved "https://registry.yarnpkg.com/svg-parser/-/svg-parser-2.0.4.tgz#fdc2e29e13951736140b76cb122c8ee6630eb6b5"
   integrity sha512-e4hG1hRwoOdRb37cIMSgzNsxyzKfayW6VOflrwvR+/bzrkyxY/31WkbgnQpgtrNp1SdpJvpUAGTa/ZoiPNDuRQ==
+
+svg-path-commander@^2.0.9:
+  version "2.0.9"
+  resolved "https://registry.yarnpkg.com/svg-path-commander/-/svg-path-commander-2.0.9.tgz#6f292f7262d37ca48ab37cefc5a6666773bc982f"
+  integrity sha512-VfRLznHewlpQvuahtBK0MT/PlWAapbTx8RSytqgaVwD3US2keKcc3WYYlBBk4vIOR+jB3nQu/NAVlWHKlo0Fjw==
+  dependencies:
+    "@thednp/dommatrix" "^2.0.6"
 
 svgo@^3.0.2:
   version "3.2.0"

@@ -1,37 +1,36 @@
 import { Engine } from '@pinball/engine'
 import Application from '../../Application'
-import Player from '../../components/Player'
 import PIXIObject from '../../PIXIObject'
 import Viewport from './Viewport'
 import { ClientEngine } from '../../../models/ClientEngine'
 import GameMap from './GameMap'
+import Pinball from '../../components/Pinball'
+import CurrentScore from '../../components/CurrentScore'
 
 class MainScene extends PIXIObject {
-  players: Map<string, Player>
+  pinball: Pinball | null
   playerId: string | null
   viewport: Viewport
   clientEngine: ClientEngine
   gameMap: GameMap
+  currentScore: CurrentScore
 
   constructor(app: Application, engine: Engine) {
     super(app, engine)
     const params = new URLSearchParams(window.location.search)
-    this.players = new Map()
     this.playerId = params.get('id')
     this.viewport = new Viewport(app, engine)
     this.clientEngine = new ClientEngine(engine, this.playerId)
-    this.gameMap = new GameMap(app, engine)
+    this.gameMap = new GameMap(app, this.clientEngine)
+    this.currentScore = new CurrentScore(engine)
+    this.pinball = null
 
     this.viewport.addChild(this.gameMap.root)
+    this.viewport.addChild(this.gameMap.mask)
+    this.viewport.addChild(this.currentScore)
 
     const player = this.engine.game.world.addPlayer(this.playerId || '')
     this.engine.game.setMe(player)
-
-    this.engine.game.world.players.forEach((player) => {
-      const pixiPlayer = new Player(player)
-      this.players.set(player.id, pixiPlayer)
-      this.viewport.addChild(pixiPlayer)
-    })
 
     this.addChild(this.viewport.root)
 
@@ -113,7 +112,16 @@ class MainScene extends PIXIObject {
   override async init() {
     await this.clientEngine.startGame()
 
-    this.gameMap.render()
+    // Draw map once
+    this.gameMap.init()
+
+    if (this.engine.game.world.pinball) {
+      this.pinball = new Pinball(this.engine.game.world.pinball)
+      this.pinball.init()
+      this.viewport.addChild(this.pinball)
+    }
+
+    this.currentScore.init()
 
     // this.clientEngine.addEventListener(
     //   ClientEngineEvents.INIT_ROOM,
@@ -130,11 +138,10 @@ class MainScene extends PIXIObject {
   }
 
   override update(interpolation: number) {
-    this.players.forEach((player) => {
-      player.update(interpolation)
-    })
-
+    this.pinball?.update(interpolation)
+    this.gameMap.update()
     this.viewport.fit(interpolation)
+    this.currentScore.update()
   }
 }
 

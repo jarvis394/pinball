@@ -1,18 +1,44 @@
 import Matter from 'matter-js'
-import { World } from './World'
+import { World, WorldEvents } from './World'
 import { Player } from './Player'
+import { GameMapData } from '@pinball/shared'
 
 export class Game {
   world: World
   me: Player | null
 
   constructor({ matterEngine }: { matterEngine: Matter.Engine }) {
-    this.world = new World({ matterEngine })
+    this.world = new World({ matterEngine, game: this })
     this.me = null
+
+    this.world.addEventListener(WorldEvents.BUMPER_HIT, ({ object }) => {
+      if (!this.me) {
+        throw new Error('Cannot add points when no "me" player is set')
+      }
+
+      this.addPoints(this.me, object.points)
+    })
+    this.world.addEventListener(WorldEvents.PLAYER_LOST_ROUND, () => {
+      if (!this.me) {
+        throw new Error(
+          'Cannot reset current points when no "me" player is set'
+        )
+      }
+
+      this.resetCurrentScore(this.me)
+    })
   }
 
-  loadMap(map: string) {
-    this.world.loadMap(map)
+  addPoints(player: Player, points: number) {
+    player.addPoints(points)
+  }
+
+  resetCurrentScore(player: Player) {
+    player.resetCurrentScore()
+  }
+
+  loadMap(data: GameMapData) {
+    this.world.loadMap(data)
   }
 
   setMe(player: Player) {
@@ -29,5 +55,10 @@ export class Game {
 
   public update() {
     this.world.update()
+  }
+
+  public clear() {
+    this.me = null
+    this.world.clear()
   }
 }

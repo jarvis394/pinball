@@ -12,10 +12,11 @@ type ClientEngineEmitterEvents = {
   [ClientEngineEvents.PLAYER_LEFT]: (playerId: Player['id']) => void
 }
 
-// enum ClientInputActionKeyCodes {
-//   RIGHT = 'ArrowRight',
-//   LEFT = 'ArrowLeft',
-// }
+enum ClientInputActionKeyCodes {
+  RIGHT = 'ArrowRight',
+  LEFT = 'ArrowLeft',
+  SPACE = 'Space',
+}
 
 export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   engine: Engine
@@ -73,10 +74,21 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   }
 
   handlePressedKeys() {
-    // this.keysPressed.forEach((keyCode) => {
-    //   switch (keyCode) {
-    //   }
-    // })
+    this.keysPressed.forEach((keyCode) => {
+      switch (keyCode) {
+        case ClientInputActionKeyCodes.LEFT:
+          this.engine.game.world.map?.activePaddles.add('paddle_bottom_left')
+          break
+        case ClientInputActionKeyCodes.RIGHT:
+          this.engine.game.world.map?.activePaddles.add('paddle_bottom_right')
+          break
+        case ClientInputActionKeyCodes.SPACE:
+          for (const key of this.engine.game.world.map?.paddles.keys() || []) {
+            this.engine.game.world.map?.activePaddles.add(key)
+          }
+          break
+      }
+    })
   }
 
   onKeyDown(e: KeyboardEvent) {
@@ -86,8 +98,16 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   onKeyUp(e: KeyboardEvent) {
     this.keysPressed.delete(e.code)
 
-    // switch (e.code) {
-
-    // }
+    switch (e.code) {
+      case ClientInputActionKeyCodes.LEFT:
+        this.engine.game.world.map?.activePaddles.delete('paddle_bottom_left')
+        break
+      case ClientInputActionKeyCodes.RIGHT:
+        this.engine.game.world.map?.activePaddles.delete('paddle_bottom_right')
+        break
+      case ClientInputActionKeyCodes.SPACE:
+        this.engine.game.world.map?.activePaddles.clear()
+        break
+    }
   }
 }
