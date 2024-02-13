@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "files": [],
+  "include": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ],
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "noImplicitOverride": false,
+    "strictPropertyInitialization": false,
+    "noUnusedParameters": false,
+    "noUnusedLocals": false
+  }
+}

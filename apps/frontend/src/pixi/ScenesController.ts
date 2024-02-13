@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js'
 import PIXIObject from 'src/pixi/PIXIObject'
 import Application from './Application'
-import { Engine } from '@pinball/engine'
+import { Engine } from '@pinball/shared'
 import MainLoop from 'mainloop.js'
 
 export default class ScenesController extends PIXI.Container {

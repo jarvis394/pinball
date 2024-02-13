@@ -1,6 +1,6 @@
 import * as PIXI from 'pixi.js'
 import Application from './Application'
-import { Engine } from '@pinball/engine'
+import { Engine } from '@pinball/shared'
 
 class PIXIObject extends PIXI.Container {
   engine: Engine

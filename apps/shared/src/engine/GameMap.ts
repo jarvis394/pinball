@@ -11,9 +11,9 @@ import {
   GameMapParseType,
   degreesToRadian,
   exhaustivnessCheck,
+  pointsOnPath,
 } from '@pinball/shared'
 import * as decomp from 'poly-decomp-es'
-import { pointsOnPath } from 'points-on-path'
 import { Paddle } from './Paddle'
 
 Matter.Common.setDecomp(decomp)

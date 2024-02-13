@@ -1,3 +1,6 @@
 export * from './utils'
 export * from './types'
 export * from './maps'
+export * from './schema'
+export * from './engine'
+export * from './config'

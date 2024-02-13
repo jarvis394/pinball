@@ -21,8 +21,7 @@
       "src/types/*": ["apps/frontend/src/types/*"],
       "src/utils/*": ["apps/frontend/src/utils/*"],
       "src/pixi/*": ["apps/frontend/src/pixi/*"],
-      "@pinball/shared": ["apps/shared/src/index.ts"],
-      "@pinball/engine": ["apps/engine/src/index.ts"]
+      "@pinball/shared": ["apps/shared/src/index.ts"]
     }
   },
   "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]

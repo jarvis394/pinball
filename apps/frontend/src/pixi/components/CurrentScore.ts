@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js'
-import { Engine } from '@pinball/engine'
+import { Engine } from '@pinball/shared'
 
 class CurrentScore extends PIXI.Graphics {
   public static FONT_SIZE = 96
@@ -10,9 +10,6 @@ class CurrentScore extends PIXI.Graphics {
   constructor(engine: Engine) {
     super()
     this.engine = engine
-  }
-
-  init() {
     this.text = new PIXI.Text(this.getText(), {
       fontFamily: 'Roboto',
       fill: 'rgba(0, 0, 0, 0.24)',
@@ -21,20 +18,16 @@ class CurrentScore extends PIXI.Graphics {
       lineHeight: CurrentScore.FONT_SIZE,
       align: 'center',
     })
+  }
 
+  init() {
     const { x, y } = this.getPosition()
     this.position.set(x, y)
-    this.addChild(this.text)
+    this.text && this.addChild(this.text)
   }
 
   getText() {
-    if (!this.engine.game.me) {
-      throw new Error(
-        'Cannot render CurrentScore component without local player'
-      )
-    }
-
-    return this.engine.game.me.currentScore
+    return this.engine.game.me?.currentScore || 0
   }
 
   getPosition() {

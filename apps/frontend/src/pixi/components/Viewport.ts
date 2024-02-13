@@ -1,14 +1,14 @@
-import { Engine } from '@pinball/engine'
-import { lerp } from '@pinball/shared'
+import { lerp, Engine } from '@pinball/shared'
 import Matter from 'matter-js'
 import { Viewport as PixiViewport } from 'pixi-viewport'
 import { DisplayObject } from 'pixi.js'
 import {
   MATTER_CANVAS_ID,
   PIXI_CANVAS_CONTAINER_ID,
-} from '../../../components/App'
-import Application from '../../Application'
+} from '../../components/App'
+import Application from '../Application'
 import MainLoop from 'mainloop.js'
+import { IS_DEV } from '../../config/constants'
 
 class Viewport {
   app: Application
@@ -29,10 +29,6 @@ class Viewport {
     this.app = app
     this.engine = engine
 
-    if (!this.engine.game.world.map) {
-      throw new Error('Cannot render Viewport component without loaded map')
-    }
-
     const canvasContainer = document.getElementById(PIXI_CANVAS_CONTAINER_ID)
 
     if (!canvasContainer) {
@@ -44,11 +40,11 @@ class Viewport {
     const { width: screenWidth, height: screenHeight } =
       canvasContainer.getBoundingClientRect()
     const { x: worldWidth, y: worldHeight } =
-      this.engine.game.world.map.data.bounds
+      this.engine.game.world.map?.data.bounds || {}
     this.screenWidth = screenWidth
     this.screenHeight = screenHeight
-    this.worldWidth = worldWidth
-    this.worldHeight = worldHeight
+    this.worldWidth = worldWidth || 0
+    this.worldHeight = worldHeight || 0
 
     // Resize app on pixi container resize
     this.resizeObserver = new ResizeObserver((e) => {
@@ -109,8 +105,10 @@ class Viewport {
     this.matterRender.canvas.style.setProperty('width', '100%')
     this.matterRender.canvas.style.setProperty('height', '100%')
 
-    this.translateMatterRender()
-    Matter.Render.run(this.matterRender)
+    if (IS_DEV) {
+      this.translateMatterRender()
+      Matter.Render.run(this.matterRender)
+    }
   }
 
   translateMatterRender() {
@@ -143,6 +141,15 @@ class Viewport {
   }
 
   init() {
+    if (!this.engine.game.world.map) {
+      throw new Error('Cannot init Viewport component without loaded map')
+    }
+
+    const { x: worldWidth, y: worldHeight } =
+      this.engine.game.world.map.data.bounds
+    this.worldWidth = worldWidth
+    this.worldHeight = worldHeight
+
     this.root.moveCenter(this.screenWidth / 2, this.screenHeight / 2)
     this.root.fit(true)
   }

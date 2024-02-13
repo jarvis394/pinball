@@ -54,26 +54,26 @@ export type GameMapObjectBase =
   | GameMapObjectBaseGeneric
   | GameMapObjectBaseVertices
 
-export type Wall = GameMapObjectBase & {
+export type GameMapObjectWall = GameMapObjectBase & {
   objectType: GameMapObjectType.WALL
 }
 
-export type Reset = GameMapObjectBase & {
+export type GameMapObjectReset = GameMapObjectBase & {
   objectType: GameMapObjectType.RESET
 }
 
-export type Bumper = GameMapObjectBase & {
+export type GameMapObjectBumper = GameMapObjectBase & {
   objectType: GameMapObjectType.BUMPER
   /** Количество очков, которое даётся при касании */
   points: number
 }
 
-export type Paddle = GameMapObjectBase & {
+export type GameMapObjectPaddle = GameMapObjectBase & {
   objectType: GameMapObjectType.PADDLE
   anchor: Matter.Vector
 }
 
-export type RedeployBall = GameMapObjectBase & {
+export type GameMapObjectRedeployBall = GameMapObjectBase & {
   objectType: GameMapObjectType.REDEPLOY_BALL
 }
 
@@ -98,11 +98,21 @@ export interface GameMapPinball {
 }
 
 export interface GameMapData {
-  name: string
+  name: GameMapName
   bounds: Matter.Vector
   pinball: GameMapPinball
   objects: GameMapObject[]
   field: GameMapFieldObject[]
 }
 
-export type GameMapObject = Wall | Reset | Bumper | Paddle | RedeployBall
+export type GameMapObject =
+  | GameMapObjectWall
+  | GameMapObjectReset
+  | GameMapObjectBumper
+  | GameMapObjectPaddle
+  | GameMapObjectRedeployBall
+
+export enum GameMapName {
+  MULTIPLAYER = 'multiplayer',
+  SINGLEPLAYER = 'singleplayer',
+}

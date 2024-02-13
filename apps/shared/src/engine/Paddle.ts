@@ -1,6 +1,6 @@
 import {
   GameMapFieldObject,
-  Paddle as GameMapObjectPaddle,
+  GameMapObjectPaddle as GameMapObjectPaddle,
   degreesToRadian,
   lerp,
 } from '@pinball/shared'
@@ -82,7 +82,7 @@ export class Paddle {
     Matter.Body.setStatic(this.body, false)
     Matter.Body.setMass(this.body, 10)
 
-    const { width, height } = this.getBodyDimenstions()
+    const { width, height } = this.getBodyDimensions()
     const leverPosition = this.getLeverPosition()
 
     Matter.Body.setPosition(this.lever, leverPosition)
@@ -138,7 +138,7 @@ export class Paddle {
     Matter.Body.setPosition(this.lever, leverPosition)
   }
 
-  private getBodyDimenstions() {
+  private getBodyDimensions() {
     return {
       width: this.body.bounds.max.x - this.body.bounds.min.x,
       height: this.body.bounds.max.y - this.body.bounds.min.y,

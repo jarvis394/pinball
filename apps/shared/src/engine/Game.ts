@@ -11,22 +11,20 @@ export class Game {
     this.world = new World({ matterEngine, game: this })
     this.me = null
 
-    this.world.addEventListener(WorldEvents.BUMPER_HIT, ({ object }) => {
-      if (!this.me) {
-        throw new Error('Cannot add points when no "me" player is set')
+    this.world.addEventListener(
+      WorldEvents.BUMPER_HIT,
+      ({ object, playerId }) => {
+        const player = this.world.players.get(playerId)
+        player && this.addPoints(player, object.points)
       }
-
-      this.addPoints(this.me, object.points)
-    })
-    this.world.addEventListener(WorldEvents.PLAYER_LOST_ROUND, () => {
-      if (!this.me) {
-        throw new Error(
-          'Cannot reset current points when no "me" player is set'
-        )
+    )
+    this.world.addEventListener(
+      WorldEvents.PLAYER_LOST_ROUND,
+      (playerId: string) => {
+        const player = this.world.players.get(playerId)
+        player && this.resetCurrentScore(player)
       }
-
-      this.resetCurrentScore(this.me)
-    })
+    )
   }
 
   addPoints(player: Player, points: number) {

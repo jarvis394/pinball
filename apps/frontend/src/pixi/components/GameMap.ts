@@ -1,27 +1,29 @@
-import { Engine, Paddle as EnginePaddle, WorldEvents } from '@pinball/engine'
 import Application from 'src/pixi/Application'
 import * as PIXI from 'pixi.js'
 import {
-  Bumper as GameMapObjectBumper,
+  GameMapObjectBumper,
   GameMapFieldObject,
   GameMapObjectBaseGeneric,
   GameMapObjectBaseSVG,
   GameMapObjectBaseVertices,
   GameMapObjectType,
   GameMapParseType,
+  Engine,
+  Paddle as EnginePaddle,
+  WorldEvents,
   exhaustivnessCheck,
   lerp,
+  pointsOnPath,
 } from '@pinball/shared'
 import Matter from 'matter-js'
-import { pointsOnPath } from 'points-on-path'
-import { ClientEngine } from '../../../models/ClientEngine'
+import { ClientEngine } from '../../models/ClientEngine'
 import MainLoop from 'mainloop.js'
 
 class GameMap {
   app: Application
   clientEngine: ClientEngine
   root: PIXI.Graphics
-  mask: PIXI.Graphics
+  mask?: PIXI.Graphics
   graphicsObjects: Record<string, PIXI.Graphics>
   paddles: Map<string, { graphics: PIXI.Graphics; paddle: EnginePaddle }>
   bumpers: Map<string, { graphics: PIXI.Graphics; bumper: GameMapObjectBumper }>
@@ -35,8 +37,6 @@ class GameMap {
     this.bumpers = new Map()
     this.activeBumpers = new Set()
     this.root = new PIXI.Graphics()
-    this.mask = this.drawMapMask()
-    this.root.mask = this.mask
   }
 
   drawMapMask() {
@@ -207,6 +207,9 @@ class GameMap {
         })
       }
     })
+
+    this.mask = this.drawMapMask()
+    this.root.mask = this.mask
 
     this.clientEngine.engine.game.world.addEventListener(
       WorldEvents.BUMPER_HIT,
