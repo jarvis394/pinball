@@ -7,6 +7,7 @@ import {
 
 const data: GameMapData = {
   name: GameMapName.SINGLEPLAYER,
+  backgroundFill: '1A1A19',
   bounds: {
     x: 394,
     y: 743,

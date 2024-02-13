@@ -3,19 +3,24 @@ import {
   EventEmitter,
   GAME_MAPS,
   GameEvent,
+  GameMapObjectType,
   GameRoomState,
+  PingObjectsEventData,
   Player,
+  PlayerLostRoundEventData,
   SchemaPlayer,
   Snapshot,
   SnapshotPinball,
+  exhaustivnessCheck,
   restoreMapActiveObjectsFromSnapshot,
   restorePinballsFromSnapshot,
   restorePlayerFromSnapshot,
 } from '@pinball/shared'
 import Matter from 'matter-js'
 import * as Colyseus from 'colyseus.js'
-import { WS_HOSTNAME } from '../config/constants'
+import { MULTIPLAYER_HOSTNAME } from '../config/constants'
 import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
+import { getRoom } from '../api/matchmaking'
 
 export enum ClientEngineEvents {
   INIT_ROOM = 'init_room',
@@ -42,22 +47,25 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   engine: Engine
   client: Colyseus.Client
   room?: Colyseus.Room<GameRoomState>
-  playerId: string | null
+  userId: string | null
   keysPressed: Set<string> = new Set()
   heldKeys: Set<string> = new Set()
   timeOffset: number
   snapshots: SnapshotInterpolation
 
-  constructor(engine: Engine, playerId: string | null) {
+  constructor(engine: Engine, userId: string | null) {
     super()
 
     this.engine = engine
-    this.playerId = playerId
-    this.client = new Colyseus.Client(WS_HOSTNAME)
+    this.userId = userId
+    this.client = new Colyseus.Client(MULTIPLAYER_HOSTNAME)
     this.timeOffset = -1
     this.snapshots = new SnapshotInterpolation(Engine.MIN_FPS, {
       autoCorrectTimeOffset: true,
     })
+
+    // Disable collisions locally because events come with snapshots
+    this.engine.game.world.disableCollisions()
   }
 
   init() {
@@ -71,13 +79,27 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     // window.addEventListener('touchend', this.onTouchEnd.bind(this))
     window.addEventListener('keydown', this.onKeyDown.bind(this))
     window.addEventListener('keyup', this.onKeyUp.bind(this))
+
+    this.engine.start()
   }
 
   async startGame() {
-    if (!this.playerId) return
+    if (!this.userId) return
 
-    this.room = await this.client.joinOrCreate<GameRoomState>('game', {
-      playerId: this.playerId,
+    const res = await getRoom({})
+
+    if (!res.success) {
+      return window.location.replace('/' + window.location.search)
+    }
+
+    this.room = await this.client.consumeSeatReservation(res.reservation)
+
+    this.room.onLeave((code) => {
+      console.log('onLeave:', code)
+    })
+
+    this.room.onError((code, message) => {
+      console.log('onError:', code, message)
     })
 
     this.room.state.players.onAdd((player) => {
@@ -90,6 +112,8 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
     this.room.onStateChange(this.handleRoomStateChange.bind(this))
     this.room.onMessage(GameEvent.INIT, this.handleRoomInit.bind(this))
+
+    this.engine.game.startGame()
   }
 
   handleRoomInit() {
@@ -100,7 +124,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   }
 
   handleAddPlayer(schemaPlayer: SchemaPlayer) {
-    if (this.playerId !== schemaPlayer.id) {
+    if (this.userId !== schemaPlayer.id) {
       // TODO: write
       console.warn('Add player that is not local:', schemaPlayer)
       return
@@ -131,9 +155,9 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.engine.frame = state.frame
     this.engine.frameTimestamp = state.time
 
-    if (!this.playerId) return
+    if (!this.userId) return
 
-    const schemaPlayer = state.players.get(this.playerId)
+    const schemaPlayer = state.players.get(this.userId)
     if (!schemaPlayer) return
 
     const pinballs: SnapshotPinball[] = []
@@ -157,6 +181,10 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       playerHighScore: schemaPlayer.highScore,
       mapName: schemaPlayer.map.map,
       mapActiveObjects: schemaPlayer.map.activeObjects,
+      events: state.events.map((e) => ({
+        data: e.data,
+        event: e.event,
+      })),
       state: {
         pinballs,
       },
@@ -185,6 +213,65 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     restorePlayerFromSnapshot(this.engine, snapshot)
     restoreMapActiveObjectsFromSnapshot(this.engine, snapshot.mapActiveObjects)
     restorePinballsFromSnapshot(this.engine, pinballs)
+    this.processSnapshotEvents(snapshot)
+  }
+
+  processSnapshotEvents(snapshot: Snapshot) {
+    const parseData = <T>(data?: string) => {
+      if (!data) return false
+
+      try {
+        return JSON.parse(data) as T
+      } catch (e) {
+        return false
+      }
+    }
+
+    snapshot.events.forEach((event) => {
+      if (!this.engine.game.me || !this.engine.game.world.map) return
+
+      switch (event.event) {
+        case GameEvent.INIT:
+        case GameEvent.PLAYER_JOIN:
+        case GameEvent.PLAYER_LEFT:
+        case GameEvent.UPDATE:
+        case GameEvent.ACTIVATE_OBJECTS:
+        case GameEvent.DEACTIVATE_OBJECTS:
+        case GameEvent.PLAYER_PINBALL_REDEPLOY:
+          break
+        case GameEvent.PING_OBJECTS: {
+          const data = parseData<PingObjectsEventData>(event.data)
+          if (!data) break
+          if (data.playerId !== this.engine.game.me.id) break
+
+          const fieldObject =
+            this.engine.game.world.map.fieldObjects[data.label]
+          const object =
+            this.engine.game.world.map.objects[fieldObject?.objectId]
+
+          if (object.objectType !== GameMapObjectType.BUMPER) break
+
+          this.engine.game.world.pingBumperForPlayer(
+            this.engine.game.me,
+            object,
+            fieldObject
+          )
+          break
+        }
+        case GameEvent.PLAYER_LOST_ROUND: {
+          const data = parseData<PlayerLostRoundEventData>(event.data)
+          if (!data) break
+
+          const player = this.engine.game.world.players.get(data.playerId)
+          if (!player) break
+
+          this.engine.game.world.loseRoundForPlayer(player)
+          break
+        }
+        default:
+          return exhaustivnessCheck(event.event)
+      }
+    })
   }
 
   handlePressedKeys() {

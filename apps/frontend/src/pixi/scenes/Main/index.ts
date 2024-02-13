@@ -7,10 +7,11 @@ import GameMap from '../../components/GameMap'
 import Pinball from '../../components/Pinball'
 import CurrentScore from '../../components/CurrentScore'
 import { Debug } from '../../components/Debug'
+import { ENABLE_DEBUG_OVERLAY } from '../../../config/constants'
 
 class MainScene extends PIXIObject {
   pinballs: Map<string, Pinball>
-  playerId: string | null
+  userId: string | null
   viewport: Viewport
   clientEngine: ClientEngine
   gameMap: GameMap
@@ -19,10 +20,9 @@ class MainScene extends PIXIObject {
 
   constructor(app: Application, engine: Engine) {
     super(app, engine)
-    const params = new URLSearchParams(window.location.search)
-    this.playerId = params.get('id')
+    this.userId = this.getUserId()
     this.viewport = new Viewport(app, engine)
-    this.clientEngine = new ClientEngine(engine, this.playerId)
+    this.clientEngine = new ClientEngine(engine, this.userId)
     this.gameMap = new GameMap(app, this.clientEngine)
     this.currentScore = new CurrentScore(engine)
     this.pinballs = new Map()
@@ -30,12 +30,19 @@ class MainScene extends PIXIObject {
 
     this.viewport.addChild(this.gameMap.root)
     this.viewport.addChild(this.currentScore)
-    this.viewport.addChild(this.debugOverlay)
+
+    if (ENABLE_DEBUG_OVERLAY) {
+      this.viewport.addChild(this.debugOverlay)
+    }
 
     this.addChild(this.viewport.root)
 
     this.clientEngine.init()
-    this.clientEngine.engine.start()
+  }
+
+  getUserId() {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('vk_user_id')
   }
 
   override async init() {

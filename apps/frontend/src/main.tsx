@@ -1,13 +1,10 @@
-// import { StrictMode } from 'react'
 import * as ReactDOM from 'react-dom/client'
-import App from './components/App'
+import { Router } from './components/Router'
 
 // SVGPathSeg polyfill
 import 'pathseg'
 
+import '@vkontakte/vkui/dist/vkui.css'
+
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
-root.render(
-  // <StrictMode>
-  <App />
-  // {/* </StrictMode> */}
-)
+root.render(<Router />)

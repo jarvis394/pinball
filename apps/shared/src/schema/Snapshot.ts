@@ -1,7 +1,7 @@
 import { Engine } from '../engine'
 import Matter from 'matter-js'
 import { Types } from '@geckos.io/snapshot-interpolation'
-import { GameMapName } from '../types'
+import { GameEvent, GameMapName } from '../types'
 
 export type SnapshotPinball = {
   id: string
@@ -12,6 +12,11 @@ export type SnapshotPinball = {
   velocityY: number
 }
 
+export type SnapshotEvent = {
+  event: GameEvent
+  data?: string
+}
+
 export interface Snapshot extends Types.Snapshot {
   id: Types.ID
   time: Types.Time
@@ -20,6 +25,7 @@ export interface Snapshot extends Types.Snapshot {
   playerHighScore: number
   playerCurrentScore: number
   mapActiveObjects: string[]
+  events: SnapshotEvent[]
   state: {
     pinballs: SnapshotPinball[]
   }
@@ -61,6 +67,7 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
     playerHighScore: player.highScore,
     playerCurrentScore: player.currentScore,
     mapActiveObjects,
+    events: [],
     state: {
       pinballs,
     },

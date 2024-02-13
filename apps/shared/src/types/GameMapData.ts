@@ -99,6 +99,7 @@ export interface GameMapPinball {
 
 export interface GameMapData {
   name: GameMapName
+  backgroundFill: string
   bounds: Matter.Vector
   pinball: GameMapPinball
   objects: GameMapObject[]

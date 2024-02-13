@@ -129,7 +129,7 @@ class GameMap {
       throw new Error('No map loaded when trying to render GameMap in PIXI')
     }
 
-    this.root.beginFill('161615')
+    this.root.beginFill(map.data.backgroundFill)
     this.root.drawRect(0, 0, map.data.bounds.x, map.data.bounds.y)
     this.root.endFill()
 

@@ -50,9 +50,10 @@ export class SchemaEvent extends Schema {
   @type('string') event: GameEvent
   @type('string') data?: string
 
-  constructor(event: GameEvent) {
+  constructor(event: GameEvent, data?: string) {
     super()
     this.event = event
+    this.data = data
   }
 }
 

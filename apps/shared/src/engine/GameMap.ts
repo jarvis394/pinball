@@ -53,9 +53,7 @@ export class GameMap {
     this.composite = Matter.Composite.create({
       label: GameMap.MAP_COMPOSITE_LABEL,
     })
-    console.time('GameMap.load')
     this.load(data)
-    console.timeEnd('GameMap.load')
   }
 
   /**

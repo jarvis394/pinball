@@ -6,10 +6,12 @@ import { GameMapData } from '@pinball/shared'
 export class Game {
   world: World
   me: Player | null
+  hasStarted: boolean
 
   constructor({ matterEngine }: { matterEngine: Matter.Engine }) {
     this.world = new World({ matterEngine, game: this })
     this.me = null
+    this.hasStarted = false
 
     this.world.addEventListener(
       WorldEvents.BUMPER_HIT,
@@ -25,6 +27,14 @@ export class Game {
         player && this.resetCurrentScore(player)
       }
     )
+  }
+
+  startGame() {
+    this.hasStarted = true
+  }
+
+  stopGame() {
+    this.hasStarted = false
   }
 
   addPoints(player: Player, points: number) {
@@ -52,6 +62,8 @@ export class Game {
   }
 
   public update() {
+    if (!this.hasStarted) return
+
     this.world.update()
   }
 

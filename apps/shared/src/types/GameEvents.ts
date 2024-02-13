@@ -1,6 +1,3 @@
-import { Player } from '../engine'
-import { GameRoomState } from '../schema/GameRoom'
-
 export enum GameEvent {
   INIT = '0',
   UPDATE = '1',
@@ -8,14 +5,44 @@ export enum GameEvent {
   PLAYER_LEFT = '3',
   ACTIVATE_OBJECTS = '4',
   DEACTIVATE_OBJECTS = '5',
+  PING_OBJECTS = '6',
+  PLAYER_LOST_ROUND = '7',
+  PLAYER_PINBALL_REDEPLOY = '8',
 }
 
-export interface InitEventMessage {
-  playerId: Player['id']
-  snapshot: GameRoomState
+export type EventData = {
+  time: number
   frame: number
 }
 
-// export type PlayerJoinEventMessage = SnapshotPlayer
+export type ActivateObjectsEventData = EventData & {
+  playerId: string
+  labels: string[]
+}
 
-// export type PlayerLeftEventMessage = SnapshotPlayer['id']
+export type DeactivateObjectsEventData = EventData & {
+  playerId: string
+  labels: string[]
+}
+
+export type PingObjectsEventData = EventData & {
+  playerId: string
+  label: string
+}
+
+export type PlayerJoinEventData = EventData & {
+  playerId: string
+}
+
+export type PlayerLeftEventData = EventData & {
+  playerId: string
+}
+
+export type PlayerLostRoundEventData = EventData & {
+  playerId: string
+}
+
+export type PlayerPinballRedeployEventData = EventData & {
+  playerId: string
+  pinballId: string
+}

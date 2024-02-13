@@ -11,7 +11,7 @@ class CurrentScore extends PIXI.Graphics {
     super()
     this.engine = engine
     this.text = new PIXI.Text(this.getText(), {
-      fontFamily: 'Roboto',
+      fontFamily: 'Open Sans',
       fill: 'rgba(0, 0, 0, 0.24)',
       fontWeight: '900',
       fontSize: CurrentScore.FONT_SIZE,

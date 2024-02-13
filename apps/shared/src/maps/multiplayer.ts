@@ -9,6 +9,7 @@ const paddleAngleDegreesSwing = 60
 
 const data: GameMapData = {
   name: GameMapName.MULTIPLAYER,
+  backgroundFill: '1A1A19',
   bounds: {
     x: 400,
     y: 900,

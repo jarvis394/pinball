@@ -17,6 +17,7 @@ export enum WorldEvents {
   PLAYER_DESPAWN = 'player_despawn',
   PINBALL_SPAWN = 'pinball_spawn',
   PLAYER_LOST_ROUND = 'player_lost_round',
+  PLAYER_PINBALL_REDEPLOY = 'player_pinball_redeploy',
   BUMPER_HIT = 'bumper_hit',
   PLAYER_CURRENT_SCORE_CHANGE = 'player_current_score_change',
 }
@@ -25,6 +26,10 @@ type WorldEmitterEvents = {
   [WorldEvents.PLAYER_SPAWN]: (playerId: string) => void
   [WorldEvents.PLAYER_DESPAWN]: (playerId: string) => void
   [WorldEvents.PLAYER_LOST_ROUND]: (playerId: string) => void
+  [WorldEvents.PLAYER_PINBALL_REDEPLOY]: (param: {
+    playerId: string
+    pinballId: string
+  }) => void
   [WorldEvents.PINBALL_SPAWN]: (pinballId: string) => void
   [WorldEvents.PLAYER_CURRENT_SCORE_CHANGE]: (
     playerId: string,
@@ -46,6 +51,7 @@ export class World extends EventEmitter<WorldEmitterEvents> {
   players: Map<Player['id'], Player> = new Map()
   /** Key is player's ID */
   pinballs: Map<Player['id'], Pinball> = new Map()
+  shouldProcessCollisions: boolean
 
   constructor({
     matterEngine,
@@ -60,8 +66,22 @@ export class World extends EventEmitter<WorldEmitterEvents> {
     this.game = game
     this.map = null
     this.mapName = null
+    this.shouldProcessCollisions = true
 
+    this.enableCollisions()
+  }
+
+  public enableCollisions() {
+    this.shouldProcessCollisions = true
     Matter.Events.on(
+      this.matterEngine,
+      'collisionStart',
+      this.handleCollision.bind(this)
+    )
+  }
+  public disableCollisions() {
+    this.shouldProcessCollisions = false
+    Matter.Events.off(
       this.matterEngine,
       'collisionStart',
       this.handleCollision.bind(this)
@@ -116,6 +136,10 @@ export class World extends EventEmitter<WorldEmitterEvents> {
     if (!playerPinball) return
 
     Matter.Body.setVelocity(playerPinball.body, Pinball.INITIAL_VELOCITY)
+    this.eventEmitter.emit(WorldEvents.PLAYER_PINBALL_REDEPLOY, {
+      playerId: player.id,
+      pinballId: playerPinball.id,
+    })
   }
 
   public pingBumperForPlayer(

@@ -36,6 +36,8 @@ export class Engine {
   }
 
   public update(delta: number) {
+    if (!this.game.hasStarted) return
+
     Matter.Engine.update(this.matterEngine, delta)
     this.game.update()
     this.frame += 1

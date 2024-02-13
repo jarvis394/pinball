@@ -2,13 +2,10 @@ import { lerp, Engine } from '@pinball/shared'
 import Matter from 'matter-js'
 import { Viewport as PixiViewport } from 'pixi-viewport'
 import { DisplayObject } from 'pixi.js'
-import {
-  MATTER_CANVAS_ID,
-  PIXI_CANVAS_CONTAINER_ID,
-} from '../../components/App'
+import { MATTER_CANVAS_ID, PIXI_CANVAS_CONTAINER_ID } from '../../pages/Game'
 import Application from '../Application'
 import MainLoop from 'mainloop.js'
-import { IS_DEV } from '../../config/constants'
+import { ENABLE_DEBUG_OVERLAY } from '../../config/constants'
 
 class Viewport {
   app: Application
@@ -105,7 +102,7 @@ class Viewport {
     this.matterRender.canvas.style.setProperty('width', '100%')
     this.matterRender.canvas.style.setProperty('height', '100%')
 
-    if (IS_DEV) {
+    if (ENABLE_DEBUG_OVERLAY) {
       this.translateMatterRender()
       Matter.Render.run(this.matterRender)
     }

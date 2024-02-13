@@ -11,16 +11,18 @@ import {
   generateSnapshot,
 } from '@pinball/shared'
 import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
-import { Client } from 'colyseus'
+import { Client } from '../rooms/game'
 
 class GamePlayer {
   id: string
+  clientId: string
   engine: Engine
   map: GameMapData
   snapshotInterpolation: SnapshotInterpolation
 
-  constructor(id: string, map: GameMapData) {
+  constructor(id: string, clientId: string, map: GameMapData) {
     this.id = id
+    this.clientId = clientId
     this.map = map
     this.engine = new Engine()
     this.snapshotInterpolation = new SnapshotInterpolation()
@@ -60,6 +62,12 @@ class GameController {
     this.mapName = mapName
     this.map = GAME_MAPS[mapName]
     this.players = new Map()
+  }
+
+  startGame() {
+    this.players.forEach((player) => {
+      player.engine.game.startGame()
+    })
   }
 
   setRoomId(roomId: string) {
@@ -113,29 +121,17 @@ class GameController {
     }
 
     return state
-
-    // state.players.forEach((player) => {
-    //   if (!this.engine.game.world.getPlayerByID(player.id)) {
-    //     state.players.delete(player.id)
-    //   }
-    // })
-
-    // state.bullets.forEach((bullet) => {
-    //   if (!this.engine.game.world.getBulletByID(bullet.id)) {
-    //     state.bullets.delete(bullet.id)
-    //   }
-    // })
   }
 
   /** @returns Created player for newly joined client */
-  handlePlayerJoin(client: Client, playerId: string): GamePlayer {
-    const gamePlayer = new GamePlayer(playerId, this.map)
+  handlePlayerJoin(client: Client, userId: string): GamePlayer {
+    const gamePlayer = new GamePlayer(userId, client.id, this.map)
     gamePlayer.init()
 
     this.players.set(gamePlayer.id, gamePlayer)
 
     client.userData = {
-      playerId,
+      userId,
     }
 
     return gamePlayer
@@ -143,15 +139,19 @@ class GameController {
 
   /** @returns ID of disconnected player */
   handlePlayerLeave(client: Client): Player['id'] {
-    const playerId = client.userData.playerId
-    const player = this.players.get(playerId)
+    const userId = client.userData?.userId
+    if (!userId) {
+      throw new Error('No user id provided in userData on player leave')
+    }
+
+    const player = this.players.get(userId)
 
     player?.engine.game.clear()
     player?.engine.destroy()
 
-    this.players.delete(playerId)
+    this.players.delete(userId)
 
-    return playerId
+    return userId
   }
 
   handleRoomDispose() {
@@ -166,12 +166,13 @@ class GameController {
   }
 
   handleActivateObjects(client: Client, labels: string[]) {
-    const playerId = client.userData?.playerId
-    const player = this.players.get(playerId)
+    const userId = client.userData?.userId
+    if (!userId) return
+
+    const player = this.players.get(userId)
     if (!player) {
-      throw new Error(
-        `Player ${playerId} not found when trying to activate objects`
-      )
+      console.warn(`Player ${userId} not found when trying to activate objects`)
+      return
     }
 
     labels.forEach((label) => {
@@ -180,12 +181,15 @@ class GameController {
   }
 
   handleDeactivateObjects(client: Client, labels: string[]) {
-    const playerId = client.userData?.playerId
-    const player = this.players.get(playerId)
+    const userId = client.userData?.userId
+    if (!userId) return
+
+    const player = this.players.get(userId)
     if (!player) {
-      throw new Error(
-        `Player ${playerId} not found when trying to deactivate objects`
+      console.warn(
+        `Player ${userId} not found when trying to deactivate objects`
       )
+      return
     }
 
     labels.forEach((label) => {
