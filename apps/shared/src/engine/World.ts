@@ -6,7 +6,8 @@ import {
   GameMapData,
   GameMapFieldObject,
   GameMapObjectType,
-  Bumper,
+  GameMapObjectBumper,
+  GameMapName,
 } from '@pinball/shared'
 import { Pinball } from './Pinball'
 import { Game } from './Game'
@@ -14,6 +15,7 @@ import { Game } from './Game'
 export enum WorldEvents {
   PLAYER_SPAWN = 'player_spawn',
   PLAYER_DESPAWN = 'player_despawn',
+  PINBALL_SPAWN = 'pinball_spawn',
   PLAYER_LOST_ROUND = 'player_lost_round',
   BUMPER_HIT = 'bumper_hit',
   PLAYER_CURRENT_SCORE_CHANGE = 'player_current_score_change',
@@ -22,13 +24,15 @@ export enum WorldEvents {
 type WorldEmitterEvents = {
   [WorldEvents.PLAYER_SPAWN]: (playerId: string) => void
   [WorldEvents.PLAYER_DESPAWN]: (playerId: string) => void
-  [WorldEvents.PLAYER_LOST_ROUND]: () => void
+  [WorldEvents.PLAYER_LOST_ROUND]: (playerId: string) => void
+  [WorldEvents.PINBALL_SPAWN]: (pinballId: string) => void
   [WorldEvents.PLAYER_CURRENT_SCORE_CHANGE]: (
     playerId: string,
     newCurrentScore: number
   ) => void
   [WorldEvents.BUMPER_HIT]: (param: {
-    object: Bumper
+    playerId: string
+    object: GameMapObjectBumper
     fieldObject: GameMapFieldObject
   }) => void
 }
@@ -38,8 +42,10 @@ export class World extends EventEmitter<WorldEmitterEvents> {
   matterEngine: Matter.Engine
   game: Game
   map: GameMap | null
-  players: Map<string, Player> = new Map()
-  pinball: Pinball | null
+  mapName: GameMapName | null
+  players: Map<Player['id'], Player> = new Map()
+  /** Key is player's ID */
+  pinballs: Map<Player['id'], Pinball> = new Map()
 
   constructor({
     matterEngine,
@@ -53,7 +59,7 @@ export class World extends EventEmitter<WorldEmitterEvents> {
     this.matterEngine = matterEngine
     this.game = game
     this.map = null
-    this.pinball = null
+    this.mapName = null
 
     Matter.Events.on(
       this.matterEngine,
@@ -68,51 +74,65 @@ export class World extends EventEmitter<WorldEmitterEvents> {
       if (!this.map) return
 
       const [pinball, body] = [pair.bodyA, pair.bodyB].sort((a) =>
-        a.label === Pinball.LABEL ? -1 : 1
+        Pinball.isPinball(a) ? -1 : 1
       )
 
-      if (pinball && body && pinball?.label === Pinball.LABEL) {
+      if (pinball && body && Pinball.isPinball(pinball)) {
         const fieldObject = this.map.fieldObjects[body.label]
         if (!fieldObject) return
 
         const object = this.map.objects[fieldObject.objectId]
+        const { playerId } = Pinball.getDataFromLabel(pinball.label)
+        const player = playerId && this.players.get(playerId)
+
+        if (!player) return
 
         switch (object?.objectType) {
           case GameMapObjectType.RESET:
-            this.loseRound()
+            this.loseRoundForPlayer(player)
             break
           case GameMapObjectType.REDEPLOY_BALL:
-            this.redeployBall()
+            this.redeployBallForPlayer(player)
             break
           case GameMapObjectType.BUMPER:
-            this.pingBumper(object, fieldObject)
+            this.pingBumperForPlayer(player, object, fieldObject)
             break
         }
       }
     })
   }
 
-  public loseRound() {
-    if (!this.pinball) return
+  public loseRoundForPlayer(player: Player) {
+    const playerPinball = this.pinballs.get(player.id)
+    if (!playerPinball) return
 
-    this.pinball.reset()
+    playerPinball.reset()
     // this.game.loseRoundForPlayer(this)
-    this.eventEmitter.emit(WorldEvents.PLAYER_LOST_ROUND)
+    this.eventEmitter.emit(WorldEvents.PLAYER_LOST_ROUND, player.id)
   }
 
-  public redeployBall() {
-    if (!this.pinball) return
+  public redeployBallForPlayer(player: Player) {
+    const playerPinball = this.pinballs.get(player.id)
+    if (!playerPinball) return
 
-    Matter.Body.setVelocity(this.pinball.body, Pinball.INITIAL_VELOCITY)
+    Matter.Body.setVelocity(playerPinball.body, Pinball.INITIAL_VELOCITY)
   }
 
-  public pingBumper(object: Bumper, fieldObject: GameMapFieldObject) {
-    this.eventEmitter.emit(WorldEvents.BUMPER_HIT, { object, fieldObject })
+  public pingBumperForPlayer(
+    player: Player,
+    object: GameMapObjectBumper,
+    fieldObject: GameMapFieldObject
+  ) {
+    this.eventEmitter.emit(WorldEvents.BUMPER_HIT, {
+      playerId: player.id,
+      object,
+      fieldObject,
+    })
   }
 
   public loadMap(data: GameMapData) {
     this.map = new GameMap(data, this)
-    this.pinball = new Pinball(this)
+    this.mapName = data.name
   }
 
   public addPlayer(id: string): Player {
@@ -130,6 +150,18 @@ export class World extends EventEmitter<WorldEmitterEvents> {
     return player
   }
 
+  public addPinballForPlayer(id: string, playerId: string): Pinball {
+    if (!this.map) {
+      throw new Error('Cannot add player: no map is currently loaded')
+    }
+
+    const pinball = new Pinball(id, playerId, this)
+
+    this.pinballs.set(pinball.playerId, pinball)
+    this.eventEmitter.emit(WorldEvents.PINBALL_SPAWN, pinball.id)
+    return pinball
+  }
+
   public removePlayer(id: string): boolean {
     const player = this.players.get(id)
 
@@ -144,14 +176,14 @@ export class World extends EventEmitter<WorldEmitterEvents> {
       player.update()
     })
 
-    this.pinball?.update()
+    this.pinballs.forEach((pinball) => pinball.update())
 
     this.map?.update()
   }
 
   public clear() {
-    this.pinball = null
-    this.players = new Map()
+    this.pinballs.clear()
+    this.players.clear()
     this.map?.clear()
     Matter.World.clear(this.instance, false)
   }

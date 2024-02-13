@@ -1,11 +1,9 @@
 import React, { useRef } from 'react'
-import { Engine } from '@pinball/engine'
 import Application from '../../pixi/Application'
 import ScenesController from '../../pixi/ScenesController'
 import { SCENES } from '../../pixi/scenes'
-// import { loadAssets } from '../../assets'
 import useMountEffect from '../../hooks/useMountEffect'
-import { singleplayerMap } from '@pinball/shared'
+import { Engine } from '@pinball/shared'
 
 export const PIXI_CANVAS_CONTAINER_ID = 'pixi-container'
 export const MATTER_CANVAS_ID = 'matter-canvas'
@@ -25,8 +23,6 @@ const App: React.FC = () => {
     const scenesController = new ScenesController(app, engine.current)
 
     const start = async () => {
-      engine.current?.game.loadMap(singleplayerMap)
-      // await loadAssets()
       await scenesController.loadScene(SCENES.MainScene)
     }
 

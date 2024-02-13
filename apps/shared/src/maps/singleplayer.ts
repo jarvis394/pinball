@@ -2,10 +2,11 @@ import {
   GameMapData,
   GameMapObjectType,
   GameMapParseType,
+  GameMapName,
 } from '../types/GameMapData'
 
 const data: GameMapData = {
-  name: 'default',
+  name: GameMapName.SINGLEPLAYER,
   bounds: {
     x: 394,
     y: 743,

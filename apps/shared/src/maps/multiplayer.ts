@@ -1,5 +1,6 @@
 import {
   GameMapData,
+  GameMapName,
   GameMapObjectType,
   GameMapParseType,
 } from '../types/GameMapData'
@@ -7,7 +8,7 @@ import {
 const paddleAngleDegreesSwing = 60
 
 const data: GameMapData = {
-  name: 'default',
+  name: GameMapName.MULTIPLAYER,
   bounds: {
     x: 400,
     y: 900,
