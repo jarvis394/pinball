@@ -30,17 +30,19 @@
         "development": {
           "buildTarget": "frontend:build:development",
           "hmr": true,
-          "host": true
+          "host": true,
+          "proxyConfig": "apps/frontend/proxy.conf.json"
         },
         "production": {
           "buildTarget": "frontend:build:production",
-          "hmr": false
+          "hmr": false,
+          "host": true
         }
       }
     },
     "preview": {
       "executor": "@nx/vite:preview-server",
-      "defaultConfiguration": "development",
+      "defaultConfiguration": "production",
       "options": {
         "buildTarget": "frontend:build"
       },

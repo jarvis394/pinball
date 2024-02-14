@@ -18,9 +18,7 @@ import {
 } from '@pinball/shared'
 import Matter from 'matter-js'
 import * as Colyseus from 'colyseus.js'
-import { MULTIPLAYER_HOSTNAME } from '../config/constants'
 import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
-import { getRoom } from '../api/matchmaking'
 
 export enum ClientEngineEvents {
   INIT_ROOM = 'init_room',
@@ -45,7 +43,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   private static PADDLE_RIGHT_LABEL = 'paddle_bottom_right'
 
   engine: Engine
-  client: Colyseus.Client
+  client?: Colyseus.Client
   room?: Colyseus.Room<GameRoomState>
   userId: string | null
   keysPressed: Set<string> = new Set()
@@ -58,7 +56,6 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
     this.engine = engine
     this.userId = userId
-    this.client = new Colyseus.Client(MULTIPLAYER_HOSTNAME)
     this.timeOffset = -1
     this.snapshots = new SnapshotInterpolation(Engine.MIN_FPS, {
       autoCorrectTimeOffset: true,
@@ -66,9 +63,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
     // Disable collisions locally because events come with snapshots
     this.engine.game.world.disableCollisions()
-  }
 
-  init() {
     Matter.Events.on(
       this.engine.matterEngine,
       'beforeUpdate',
@@ -83,16 +78,24 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.engine.start()
   }
 
-  async startGame() {
-    if (!this.userId) return
+  setClient(client: Colyseus.Client) {
+    this.client = client
+  }
 
-    const res = await getRoom({})
+  setRoom(room: Colyseus.Room<GameRoomState>) {
+    this.room = room
+  }
 
-    if (!res.success) {
-      return window.location.replace('/' + window.location.search)
+  startGame() {
+    if (!this.userId) {
+      console.error('Cannot start game: ClientEngine does not have userId')
+      return
     }
 
-    this.room = await this.client.consumeSeatReservation(res.reservation)
+    if (!this.room) {
+      console.error('Cannot start game: ClientEngine does not have room')
+      return
+    }
 
     this.room.onLeave((code) => {
       console.log('onLeave:', code)

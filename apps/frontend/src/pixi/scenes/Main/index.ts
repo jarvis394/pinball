@@ -9,6 +9,11 @@ import CurrentScore from '../../components/CurrentScore'
 import { Debug } from '../../components/Debug'
 import { ENABLE_DEBUG_OVERLAY } from '../../../config/constants'
 
+type MainSceneProps = {
+  app: Application
+  engine: Engine
+}
+
 class MainScene extends PIXIObject {
   pinballs: Map<string, Pinball>
   userId: string | null
@@ -18,7 +23,7 @@ class MainScene extends PIXIObject {
   currentScore: CurrentScore
   debugOverlay: Debug
 
-  constructor(app: Application, engine: Engine) {
+  constructor({ app, engine }: MainSceneProps) {
     super(app, engine)
     this.userId = this.getUserId()
     this.viewport = new Viewport(app, engine)
@@ -37,15 +42,6 @@ class MainScene extends PIXIObject {
 
     this.addChild(this.viewport.root)
 
-    this.clientEngine.init()
-  }
-
-  getUserId() {
-    const params = new URLSearchParams(window.location.search)
-    return params.get('vk_user_id')
-  }
-
-  override async init() {
     this.clientEngine.addEventListener(
       ClientEngineEvents.INIT_ROOM,
       this.handleInitRoom.bind(this)
@@ -58,13 +54,19 @@ class MainScene extends PIXIObject {
       WorldEvents.PLAYER_SPAWN,
       this.handlePlayerSpawn.bind(this)
     )
-
-    await this.clientEngine.startGame()
-
     // this.clientEngine.addEventListener(
     //   ClientEngineEvents.PLAYER_LEFT,
     //   this.handlePlayerLeft.bind(this)
     // )
+  }
+
+  startGame() {
+    this.clientEngine.startGame()
+  }
+
+  getUserId() {
+    const params = new URLSearchParams(window.location.search)
+    return params.get('vk_user_id')
   }
 
   handlePlayerSpawn(playerId: string) {

@@ -1,4 +1,4 @@
-import Application from 'src/pixi/Application'
+import Application from '../../pixi/Application'
 import * as PIXI from 'pixi.js'
 import {
   GameMapObjectBumper,

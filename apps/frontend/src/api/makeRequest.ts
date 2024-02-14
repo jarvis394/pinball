@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig } from 'axios'
-import { MULTIPLAYER_HOSTNAME } from '../config/constants'
+import { BACKEND_URL } from '../config/constants'
 
 interface Arguments {
   /** API method as an URL path */
@@ -17,6 +17,7 @@ export default async <T = never>({
   params,
   requestOptions,
 }: Arguments): Promise<T> => {
+  const baseUrl = import.meta.env.DEV ? '/api' : BACKEND_URL
   const headers = {
     Authorization: `Bearer ${window.location.search.split('?')[1]}`,
   }
@@ -24,7 +25,7 @@ export default async <T = never>({
   return (
     await axios({
       method: requestOptions?.method || 'get',
-      url: MULTIPLAYER_HOSTNAME + '/' + path,
+      url: baseUrl + '/' + path,
       params,
       headers,
       ...requestOptions,

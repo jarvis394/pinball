@@ -3,9 +3,9 @@ import makeRequest from './makeRequest'
 
 export const getRoom = async (data: MatchmakingGetRoomReq) => {
   return await makeRequest<MatchmakingGetRoomRes>({
-    path: 'matchmaker',
+    path: 'matchmaking',
     requestOptions: {
-      method: 'post',
+      method: 'get',
       data,
     },
   })
@@ -13,9 +13,9 @@ export const getRoom = async (data: MatchmakingGetRoomReq) => {
 
 export const reconnectToRoom = async () => {
   return await makeRequest({
-    path: 'matchmaker/reconnect',
+    path: 'matchmaking/reconnect',
     requestOptions: {
-      method: 'post',
+      method: 'get',
     },
   })
 }

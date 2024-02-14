@@ -1,4 +1,5 @@
-export const MULTIPLAYER_HOSTNAME = import.meta.env.VITE_MULTIPLAYER_HOSTNAME
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL
+export const MULTIPLAYER_URL = import.meta.env.VITE_MULTIPLAYER_URL
 export const ENABLE_DEBUG_OVERLAY =
   import.meta.env.VITE_ENABLE_DEBUG_OVERLAY === 'true'
 

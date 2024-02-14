@@ -31,8 +31,7 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@pinball/shared": ["apps/shared/src/index.ts"],
-      "@pinball/shared/*": ["apps/shared/src/*"]
+      "@pinball/shared": ["apps/shared/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

@@ -4,8 +4,12 @@ import Field from '../../components/svg/Field'
 import Logo from '../../components/svg/Logo'
 import { Avatar } from '@vkontakte/vkui'
 import './Main.css'
+import { useAppSelector } from '../../store'
 
 const Main: React.FC = () => {
+  const bridgeData = useAppSelector((store) => store.user.bridgeData)
+  const user = useAppSelector((store) => store.user.data)
+
   return (
     <div className="Main">
       <div className="Main__logoContainer">
@@ -13,10 +17,14 @@ const Main: React.FC = () => {
         <Logo className="Main__logo" />
       </div>
       <div className="Main__userContainer">
-        <Avatar size={48} src="" initials="ВЕ" />
+        <Avatar
+          size={48}
+          src={bridgeData?.avatarUrl}
+          initials={bridgeData?.fullname}
+        />
         <div className="Main__userContent">
-          <h1>Владислав Екушев</h1>
-          <p>0 ELO</p>
+          <h1>{bridgeData?.fullname}</h1>
+          <p>{user?.elo} ELO</p>
         </div>
       </div>
       <Link to="/game" className="Main__startGame">
