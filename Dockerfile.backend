@@ -1,0 +1,28 @@
+FROM node:20-alpine as build
+
+WORKDIR /app
+
+COPY package.json .
+COPY yarn.lock .
+
+RUN yarn
+
+COPY packages/backend ./packages/backend
+COPY packages/shared ./packages/shared
+COPY tsconfig.base.json ./tsconfig.base.json
+COPY .env ./.env
+COPY nx.json ./nx.json
+
+RUN yarn nx reset
+RUN yarn build:back
+
+FROM node:20-alpine as production
+
+WORKDIR /app
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist/packages/backend ./dist
+COPY --from=build /prisma .
+COPY --from=build /app/package.json .
+
+CMD [ "node", "dist/main.js" ]
