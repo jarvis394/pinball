@@ -1,0 +1,116 @@
+.ResultsCard {
+  overflow: hidden;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0px;
+  background-color: #1a1a19;
+}
+
+.ResultsCard__userBlock {
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  align-items: center;
+}
+
+.ResultsCard__userBlockInfoContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0px;
+  flex-grow: 1;
+}
+
+.ResultsCard__userBlockInfoContainer > h1 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ResultsCard__userBlockInfoContainer > p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.63);
+}
+
+.ResultsCard__placement {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 900;
+  user-select: none;
+  border-radius: 4px;
+  background-color: #111111;
+  color: rgba(255, 255, 255, 0.63);
+}
+
+.ResultsCard__placement--first {
+  background-color: #fab005;
+  color: #44320a;
+}
+
+.ResultsCard__placement--second {
+  background-color: #b8babb;
+  color: #122d3b;
+}
+
+.ResultsCard__placement--third {
+  background-color: #a07545;
+  color: #34200b;
+}
+
+.ResultsCard__eloChange {
+  color: rgba(255, 255, 255, 1);
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.ResultsCard__eloChange--positive {
+  color: #cd965a;
+}
+
+.ResultsCard__eloChange--negative {
+  color: #d2423e;
+}
+
+.ResultsCard__scoresBlock {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  justify-content: space-between;
+  background-color: #1d1d1b;
+}
+
+.ResultsCard__score {
+  display: flex;
+  padding: 4px 8px 4px 16px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.ResultsCard__highScoreContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.ResultsCard__highScoreContainer > span {
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.63;
+}
+
+.ResultsCard__highScore {
+  background-color: #292825;
+  padding: 5px 16px;
+  display: flex;
+  font-size: 16px;
+  font-weight: 600;
+}

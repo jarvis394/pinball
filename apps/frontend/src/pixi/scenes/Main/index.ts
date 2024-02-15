@@ -8,6 +8,7 @@ import Pinball from '../../components/Pinball'
 import CurrentScore from '../../components/CurrentScore'
 import { Debug } from '../../components/Debug'
 import { ENABLE_DEBUG_OVERLAY } from '../../../config/constants'
+import Timer from '../../components/Timer'
 
 type MainSceneProps = {
   app: Application
@@ -21,6 +22,7 @@ class MainScene extends PIXIObject {
   clientEngine: ClientEngine
   gameMap: GameMap
   currentScore: CurrentScore
+  timer: Timer
   debugOverlay: Debug
 
   constructor({ app, engine }: MainSceneProps) {
@@ -30,6 +32,7 @@ class MainScene extends PIXIObject {
     this.clientEngine = new ClientEngine(engine, this.userId)
     this.gameMap = new GameMap(app, this.clientEngine)
     this.currentScore = new CurrentScore(engine)
+    this.timer = new Timer(engine)
     this.pinballs = new Map()
     this.debugOverlay = new Debug(this.clientEngine)
 
@@ -41,23 +44,24 @@ class MainScene extends PIXIObject {
     }
 
     this.addChild(this.viewport.root)
+    this.addChild(this.timer)
 
     this.clientEngine.addEventListener(
       ClientEngineEvents.INIT_ROOM,
       this.handleInitRoom.bind(this)
     )
+    this.clientEngine.addEventListener(
+      ClientEngineEvents.PLAYER_JOIN,
+      this.handlePlayerJoin.bind(this)
+    )
     this.clientEngine.engine.game.world.addEventListener(
       WorldEvents.PINBALL_SPAWN,
       this.handlePinballSpawn.bind(this)
     )
-    this.clientEngine.engine.game.world.addEventListener(
-      WorldEvents.PLAYER_SPAWN,
-      this.handlePlayerSpawn.bind(this)
+    this.clientEngine.addEventListener(
+      ClientEngineEvents.PLAYER_LEFT,
+      this.handlePlayerLeft.bind(this)
     )
-    // this.clientEngine.addEventListener(
-    //   ClientEngineEvents.PLAYER_LEFT,
-    //   this.handlePlayerLeft.bind(this)
-    // )
   }
 
   startGame() {
@@ -69,8 +73,12 @@ class MainScene extends PIXIObject {
     return params.get('vk_user_id')
   }
 
-  handlePlayerSpawn(playerId: string) {
-    console.log('[PIXI] MainScene: add player', playerId)
+  handlePlayerJoin(playerId: string) {
+    console.log('[PIXI] MainScene: player join', playerId)
+  }
+
+  handlePlayerLeft(playerId: string) {
+    console.log('[PIXI] MainScene: player left', playerId)
   }
 
   handlePinballSpawn(pinballId: string) {
@@ -97,6 +105,7 @@ class MainScene extends PIXIObject {
     this.gameMap.mask && this.viewport.addChild(this.gameMap.mask)
     this.debugOverlay.init()
     this.currentScore.init()
+    this.timer.init()
     this.viewport.init()
   }
 
@@ -111,6 +120,7 @@ class MainScene extends PIXIObject {
     this.pinballs.forEach((pinball) => pinball.update(interpolation))
     this.gameMap.update()
     this.currentScore.update()
+    this.timer.update()
     this.debugOverlay.update()
   }
 }

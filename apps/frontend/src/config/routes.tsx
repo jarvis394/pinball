@@ -1,8 +1,9 @@
 import Main from '../pages/Main'
 import Game from '../pages/Game'
 import React from 'react'
+import Results from '../pages/Results'
 
-export type RouteAlias = 'main' | 'game'
+export type RouteAlias = 'main' | 'game' | 'results'
 
 export type Route<Alias extends RouteAlias = RouteAlias> = {
   alias: Alias
@@ -22,5 +23,10 @@ export const routes: {
     alias: 'game',
     path: '/game',
     element: <Game />,
+  },
+  results: {
+    alias: 'results',
+    path: '/results',
+    element: <Results />,
   },
 }

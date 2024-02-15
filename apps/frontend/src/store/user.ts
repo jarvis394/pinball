@@ -39,6 +39,11 @@ export const userSlice = createSlice({
     ) {
       state.bridgeData = payload
     },
+    setUserElo(state, { payload }: PayloadAction<number>) {
+      if (!state.data) return
+
+      state.data.elo = payload
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -57,6 +62,6 @@ export const userSlice = createSlice({
   },
 })
 
-export const { setUserBridgeData } = userSlice.actions
+export const { setUserBridgeData, setUserElo } = userSlice.actions
 
 export default userSlice.reducer

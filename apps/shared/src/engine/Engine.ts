@@ -36,7 +36,7 @@ export class Engine {
   }
 
   public update(delta: number) {
-    if (!this.game.hasStarted) return
+    if (!this.game.hasStarted || this.game.hasEnded) return
 
     Matter.Engine.update(this.matterEngine, delta)
     this.game.update()
@@ -56,6 +56,6 @@ export class Engine {
   }
 
   public static now() {
-    return performance.now() || Date.now()
+    return Date.now()
   }
 }

@@ -1,19 +1,38 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import Application from '../../pixi/Application'
 import useMountEffect from '../../hooks/useMountEffect'
 import { Engine, GameRoomState } from '@pinball/shared'
-import './Game.css'
 import MainLoop from 'mainloop.js'
 import MainScene from '../../pixi/scenes/Main'
 import * as Colyseus from 'colyseus.js'
 import { MULTIPLAYER_URL } from '../../config/constants'
-import { fetchMatchmakingRoom } from '../../store/matchmaking'
+import {
+  fetchMatchmakingRoom,
+  resetMatchmakingRoom,
+  setGameResults,
+} from '../../store/matchmaking'
 import { useAppDispatch, useAppSelector } from '../../store'
+import PlayerInfo from './PlayerInfo'
+import {
+  ClientEngineEvents,
+  ClientEngineGameResultsEventData,
+} from '../../models/ClientEngine'
+import {
+  ClientEnginePlayer,
+  ClientEnginePlayerJson,
+} from '../../models/ClientEnginePlayer'
+import { useNavigate } from 'react-router-dom'
+import { setUserElo } from '../../store/user'
+import { routes } from '../../config/routes'
+import { Button } from '../../components/Button'
+import './Game.css'
 
 export const PIXI_CANVAS_CONTAINER_ID = 'pixi-container'
 export const MATTER_CANVAS_ID = 'matter-canvas'
 
 const Game: React.FC = () => {
+  const navigate = useNavigate()
+  const userId = useAppSelector((store) => store.user.data?.id)
   const reservation = useAppSelector((store) => store.matchmaking.reservation)
   const client = useRef(new Colyseus.Client(MULTIPLAYER_URL))
   const [room, setRoom] = useState<Colyseus.Room<GameRoomState>>()
@@ -22,7 +41,44 @@ const Game: React.FC = () => {
   const engine = useRef<Engine>()
   const app = useRef<Application>()
   const scene = useRef<MainScene>()
+  const [opponentPlayer, setOpponentPlayer] = useState<ClientEnginePlayerJson>()
+  const [localPlayer, setLocalPlayer] = useState<ClientEnginePlayerJson>()
+  const shouldShowCancelSearchButton = !opponentPlayer
 
+  const updatePlayerData = useCallback(
+    async (player: ClientEnginePlayer) => {
+      if (player.id === userId?.toString()) {
+        setLocalPlayer(player.toJSON())
+      } else {
+        setOpponentPlayer(player.toJSON())
+      }
+    },
+    [userId]
+  )
+
+  const handleGameEndEvent = useCallback(
+    (results: ClientEngineGameResultsEventData) => {
+      if (!userId) return
+
+      const newElo = results.eloChange[userId]?.elo
+
+      dispatch(resetMatchmakingRoom())
+      dispatch(setGameResults(results))
+
+      if (newElo !== undefined) {
+        dispatch(setUserElo(newElo))
+      }
+
+      navigate(routes.results.path)
+    },
+    [dispatch, navigate, userId]
+  )
+
+  const handleCancel = () => {
+    navigate(routes.main.path)
+  }
+
+  // Creates PIXI scene
   useEffect(() => {
     if (!room || !app.current || !engine.current) return
 
@@ -30,6 +86,25 @@ const Game: React.FC = () => {
       app: app.current,
       engine: engine.current,
     })
+
+    scene.current.clientEngine.addEventListener(
+      ClientEngineEvents.PLAYER_JOIN,
+      updatePlayerData
+    )
+    scene.current.clientEngine.addEventListener(
+      ClientEngineEvents.PLAYER_STATS_CHANGE,
+      updatePlayerData
+    )
+    scene.current.clientEngine.addEventListener(
+      ClientEngineEvents.LEAVE_ROOM,
+      (code) => {
+        console.log('Event leave:', code)
+      }
+    )
+    scene.current.clientEngine.addEventListener(
+      ClientEngineEvents.GAME_ENDED,
+      handleGameEndEvent
+    )
 
     scene.current.clientEngine.setClient(client.current)
     scene.current.clientEngine.setRoom(room)
@@ -46,10 +121,13 @@ const Game: React.FC = () => {
     })
 
     return () => {
-      room.leave(true)
+      scene.current?.clientEngine.destroy()
+      scene.current?.destroy()
+      room?.connection?.isOpen && room?.leave(true)
     }
-  }, [client, room])
+  }, [client, updatePlayerData, room, handleGameEndEvent])
 
+  // Creates engine and PIXI application
   useMountEffect(() => {
     engine.current = new Engine()
 
@@ -61,15 +139,16 @@ const Game: React.FC = () => {
 
     return () => {
       engine.current?.destroy()
-      scene.current?.destroy()
       app.current?.destroy(true)
     }
   })
 
+  // Requests to server for room reservation
   useMountEffect(() => {
     dispatch(fetchMatchmakingRoom())
   })
 
+  // Connects to room when reservation from server arrives
   useEffect(() => {
     if (!reservation) return
 
@@ -84,12 +163,25 @@ const Game: React.FC = () => {
   }, [reservation])
 
   return (
-    <div
-      id={PIXI_CANVAS_CONTAINER_ID}
-      className="Game__pixiContainer"
-      ref={canvasContainer}
-    >
-      <canvas id={MATTER_CANVAS_ID} className="Game__matterCanvas" />
+    <div className="Game">
+      {shouldShowCancelSearchButton && (
+        <Button
+          variant="primary"
+          className="Game__cancelButton"
+          onClick={handleCancel}
+        >
+          отмена
+        </Button>
+      )}
+      <PlayerInfo player={opponentPlayer} />
+      <div
+        id={PIXI_CANVAS_CONTAINER_ID}
+        className="Game__pixiContainer"
+        ref={canvasContainer}
+      >
+        <canvas id={MATTER_CANVAS_ID} className="Game__matterCanvas" />
+      </div>
+      <PlayerInfo reverseRows player={localPlayer} />
     </div>
   )
 }

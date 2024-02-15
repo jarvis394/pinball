@@ -1,3 +1,6 @@
+import { User } from '@prisma/client'
+import { GameResult } from '../engine'
+
 export enum GameEvent {
   INIT = '0',
   UPDATE = '1',
@@ -8,11 +11,38 @@ export enum GameEvent {
   PING_OBJECTS = '6',
   PLAYER_LOST_ROUND = '7',
   PLAYER_PINBALL_REDEPLOY = '8',
+  GAME_ENDED = '9',
+  GAME_STARTED = '10',
 }
 
 export type EventData = {
   time: number
   frame: number
+}
+
+export type InitEventData = {
+  players: Record<string, User>
+}
+
+export type GameStartedEventData = {
+  players: Record<string, User>
+}
+
+export type GameResultsPlacement = {
+  playerId: string
+  score: number
+  highScore: number
+  result: GameResult
+}
+
+export type GameResultsEloChange = {
+  change: number
+  elo: number
+}
+
+export type GameResultsEventData = {
+  placements: GameResultsPlacement[]
+  eloChange: Record<string, GameResultsEloChange>
 }
 
 export type ActivateObjectsEventData = EventData & {
@@ -32,7 +62,7 @@ export type PingObjectsEventData = EventData & {
 
 export type PlayerJoinEventData = EventData & {
   playerId: string
-}
+} & Omit<User, 'id'>
 
 export type PlayerLeftEventData = EventData & {
   playerId: string

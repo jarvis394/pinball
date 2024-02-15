@@ -1,6 +1,15 @@
-.Game__pixiContainer {
+.Game {
   width: 100%;
   height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.Game__pixiContainer {
+  width: 100%;
+  display: flex;
+  flex-grow: 1;
+  position: relative;
 }
 
 .Game__pixiContainer > canvas {
@@ -9,10 +18,108 @@
 
 .Game__matterCanvas {
   width: 100%;
-  height: 100%;
+  display: flex;
+  flex-grow: 1;
   top: 0;
   left: 0;
   overflow: hidden;
   pointer-events: none;
   z-index: 1;
+}
+
+.Game__playerInfoContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  user-select: none;
+}
+
+.Game__playerInfoContainer--reverseRows {
+  flex-direction: column-reverse;
+}
+
+.Game__playerInfoContainer--waiting {
+  background-color: #1a1a19;
+  height: 64px;
+  padding: 16px;
+  color: rgba(255, 255, 255, 0.32);
+  font-weight: 600;
+  align-items: center;
+  flex-direction: row;
+}
+
+.Game__playerInfoUserRow {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  padding: 4px 16px;
+  align-items: center;
+  background-color: #1a1a19;
+}
+
+.Game__playerInfoUserRow > h1 {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.63;
+  flex-grow: 1;
+  display: flex;
+  margin: 0;
+}
+
+.Game__playerInfoUserRow > p {
+  font-size: 14px;
+  font-weight: 400;
+  opacity: 0.63;
+  margin: 0;
+}
+
+.Game__playerInfoPlayerInfoRow {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1d1d1b;
+}
+
+.Game__playerInfoScore {
+  display: flex;
+  padding: 4px 8px 4px 16px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.Game__playerInfoHighScoreContainer {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.Game__playerInfoHighScoreContainer > span {
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.63;
+}
+
+.Game__playerInfoHighScore {
+  background-color: #c49a6c;
+  padding: 5px 16px;
+  display: flex;
+  font-size: 16px;
+  font-weight: 600;
+  color: black;
+}
+
+.Game__cancelButton.Button {
+  position: absolute;
+  padding-top: 4px;
+  padding-bottom: 6px;
+  font-size: 15px;
+  width: fit-content;
+  top: 14px;
+  right: 16px;
 }

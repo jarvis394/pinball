@@ -42,6 +42,10 @@ class GamePlayer {
     return { player, pinball }
   }
 
+  setScore(score: number) {
+    this.engine.game.me!.score = score
+  }
+
   setCurrentScore(score: number) {
     this.engine.game.me!.currentScore = score
   }
@@ -67,6 +71,12 @@ class GameController {
   startGame() {
     this.players.forEach((player) => {
       player.engine.game.startGame()
+    })
+  }
+
+  endGame() {
+    this.players.forEach((player) => {
+      player.engine.game.endGame()
     })
   }
 
@@ -101,6 +111,7 @@ class GameController {
 
     player.currentScore = snapshot.playerCurrentScore
     player.highScore = snapshot.playerHighScore
+    player.score = snapshot.playerScore
     player.map.activeObjects = snapshot.mapActiveObjects
 
     for (const snapshotPinball of snapshot.state.pinballs) {
@@ -155,8 +166,6 @@ class GameController {
   }
 
   handleRoomDispose() {
-    console.log('room', this.roomId, 'disposing...')
-
     this.players.forEach((player) => {
       player.engine.game.clear()
       player.engine.destroy()

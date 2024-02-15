@@ -1,0 +1,42 @@
+.Button.vkuiTappable {
+  display: flex;
+  flex-direction: row;
+  padding: 0 16px;
+  padding-top: 14px;
+  padding-bottom: 16px;
+  gap: 8px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+  border: none;
+  text-decoration: none;
+  border-radius: 6px;
+  user-select: none;
+  --vkui--color_transparent--hover: rgba(255, 255, 255, 0.03);
+  --vkui--color_transparent--active: rgba(255, 255, 255, 0.07);
+}
+
+.Button.Button--primary {
+  background-color: #cd965a;
+  color: #161615;
+  --vkui--color_transparent--hover: rgba(0, 0, 0, 0.07);
+  --vkui--color_transparent--active: rgba(0, 0, 0, 0.16);
+}
+
+.Button.Button--secondary {
+  background-color: #1a1a19;
+  color: white;
+}
+
+.Button.Button--fullWidth {
+  width: 100%;
+  height: 80px;
+  font-size: 24px;
+  line-height: 32px;
+  border-radius: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}

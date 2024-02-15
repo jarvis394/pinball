@@ -38,6 +38,7 @@ export class SchemaPlayer extends Schema {
   @type('string') id: string
   @type('uint16') highScore: number = 0
   @type('uint16') currentScore: number = 0
+  @type('uint16') score: number = 0
   @type(SchemaMap) map: SchemaMap = new SchemaMap()
 
   constructor(playerId: string) {

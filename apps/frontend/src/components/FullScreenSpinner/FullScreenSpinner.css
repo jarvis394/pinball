@@ -4,3 +4,7 @@
   align-items: center;
   justify-content: center;
 }
+
+.FullScreenSpinner > .vkuiSpinner {
+  color: #42403c;
+}

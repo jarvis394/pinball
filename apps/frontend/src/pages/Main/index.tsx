@@ -1,14 +1,21 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import Field from '../../components/svg/Field'
 import Logo from '../../components/svg/Logo'
 import { Avatar } from '@vkontakte/vkui'
-import './Main.css'
 import { useAppSelector } from '../../store'
+import { Button } from '../../components/Button'
+import { routes } from '../../config/routes'
+import './Main.css'
 
 const Main: React.FC = () => {
+  const navigate = useNavigate()
   const bridgeData = useAppSelector((store) => store.user.bridgeData)
   const user = useAppSelector((store) => store.user.data)
+
+  const handleNavigateToGame = () => {
+    navigate(routes.game.path)
+  }
 
   return (
     <div className="Main">
@@ -27,9 +34,14 @@ const Main: React.FC = () => {
           <p>{user?.elo} ELO</p>
         </div>
       </div>
-      <Link to="/game" className="Main__startGame">
+      <Button
+        Component={'a'}
+        variant="primary"
+        fullWidth
+        onClick={handleNavigateToGame}
+      >
         играть
-      </Link>
+      </Button>
     </div>
   )
 }

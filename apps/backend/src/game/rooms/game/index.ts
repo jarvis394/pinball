@@ -15,8 +15,14 @@ import {
   GameMapFieldObject,
   PlayerLostRoundEventData,
   PlayerPinballRedeployEventData,
+  InitEventData,
+  GameResultsEventData,
+  Game,
+  GameResult,
+  exhaustivnessCheck,
 } from '@pinball/shared'
 import GameController from '../../controllers/GameController'
+import { PrismaClient, User } from '@prisma/client'
 
 export interface ClientData {
   userId?: string
@@ -25,22 +31,27 @@ export interface ClientData {
 export type Client = ColyseusClient<ClientData>
 
 export class GameRoom extends Room<GameRoomState> {
+  /** How much elo points should be subtracted or added */
+  public static GAME_ELO_CHANGE = 10
+
   override maxClients = 2
   gameController: GameController
   mapName: GameMapName
+  dbPlayersData: Record<string, User>
+  prisma = new PrismaClient()
 
   constructor() {
     super()
+    this.dbPlayersData = {}
     this.mapName = GameMapName.SINGLEPLAYER
     this.gameController = new GameController(this.mapName)
     this.setPatchRate(Engine.MIN_DELTA)
   }
 
   override onCreate() {
-    this.clock.start()
+    this.clock.stop()
     this.gameController.setRoomId(this.roomId)
     this.setState(new GameRoomState(this.mapName))
-    this.setSimulationInterval(this.update.bind(this), Engine.MIN_DELTA)
 
     this.onMessage(
       GameEvent.ACTIVATE_OBJECTS,
@@ -52,7 +63,10 @@ export class GameRoom extends Room<GameRoomState> {
     )
   }
 
-  override onJoin(client: Client, options: { userId?: string } | undefined) {
+  override async onJoin(
+    client: Client,
+    options: { userId?: string } | undefined
+  ) {
     if (!options?.userId) {
       return client.leave()
     }
@@ -91,20 +105,44 @@ export class GameRoom extends Room<GameRoomState> {
       userId: gamePlayer.id,
     }
 
-    client.send(GameEvent.INIT)
+    const dbUser = await this.prisma.user.findUnique({
+      where: {
+        id: Number(gamePlayer.id),
+      },
+    })
+
+    // Client should always have record in DB as it
+    // should create on matchmaking seat reservation
+    if (!dbUser) {
+      return client.leave()
+    }
+
+    this.dbPlayersData[gamePlayer.id] = dbUser
+
+    const initData: InitEventData = {
+      players: this.dbPlayersData,
+    }
+
+    client.send(GameEvent.INIT, initData)
 
     const eventData: PlayerJoinEventData = {
       playerId: gamePlayer.id,
       frame: this.state.frame,
       time: this.state.time,
+      elo: dbUser.elo,
     }
 
     this.state.events.push(
       new SchemaEvent(GameEvent.PLAYER_JOIN, JSON.stringify(eventData))
     )
 
-    if (this.gameController.players.size >= this.maxClients) {
+    this.broadcast(GameEvent.PLAYER_JOIN, eventData)
+
+    if (this.shouldStartGame()) {
+      this.clock.start()
+      this.setSimulationInterval(this.update.bind(this), Engine.MIN_DELTA)
       this.gameController.startGame()
+      this.broadcast(GameEvent.GAME_STARTED, initData)
     }
   }
 
@@ -113,7 +151,6 @@ export class GameRoom extends Room<GameRoomState> {
 
     const playerId = this.gameController.handlePlayerLeave(client)
     this.state.players.delete(playerId)
-    this.broadcast(GameEvent.PLAYER_LEFT, playerId)
 
     const eventData: PlayerLeftEventData = {
       playerId,
@@ -124,13 +161,32 @@ export class GameRoom extends Room<GameRoomState> {
     this.state.events.push(
       new SchemaEvent(GameEvent.PLAYER_LEFT, JSON.stringify(eventData))
     )
+
+    this.broadcast(GameEvent.PLAYER_LEFT, eventData)
   }
 
   override onDispose() {
     this.gameController.handleRoomDispose()
   }
 
+  shouldEndGame() {
+    return this.clock.elapsedTime >= Game.DURATION
+  }
+
+  shouldStartGame() {
+    return this.gameController.players.size >= this.maxClients
+  }
+
   update(delta: number) {
+    if (!this.shouldStartGame()) {
+      return
+    }
+
+    if (this.shouldEndGame()) {
+      this.handleGameEnd()
+      return
+    }
+
     const snapshots = this.gameController.update(delta)
     snapshots.forEach((snapshot) => {
       this.gameController.syncRoomStateBySnapshot(this.state, snapshot)
@@ -138,6 +194,86 @@ export class GameRoom extends Room<GameRoomState> {
 
     this.broadcastPatch()
     this.state.events = []
+  }
+
+  async handleGameEnd() {
+    if (this.gameController.players.size === 0) return
+
+    const data: GameResultsEventData = {
+      eloChange: {},
+      placements: [],
+    }
+
+    this.gameController.players.forEach((player) => {
+      if (!player.engine.game.me) return
+
+      data.placements.push({
+        playerId: player.id,
+        score: player.engine.game.me.score,
+        highScore: player.engine.game.me.highScore,
+        result: GameResult.LOST,
+      })
+    })
+
+    data.placements = data.placements.sort((a, b) =>
+      a.score > b.score ? -1 : 1
+    )
+    if (data.placements[0]) {
+      data.placements[0].result = GameResult.WON
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const transactions: any[] = []
+
+    // Update users' elo
+    data.placements.forEach((placement) => {
+      const player = this.dbPlayersData[placement.playerId]
+      if (!player) return
+
+      let change = 0
+
+      switch (placement.result) {
+        case GameResult.LOST: {
+          // Player's elo cannot go lower than 0
+          if (player.elo !== 0) {
+            change = -GameRoom.GAME_ELO_CHANGE
+          }
+          break
+        }
+        case GameResult.WON: {
+          change = GameRoom.GAME_ELO_CHANGE
+          break
+        }
+        default:
+          return exhaustivnessCheck(placement.result)
+      }
+
+      const newElo = player.elo + change
+
+      data.eloChange[placement.playerId] = {
+        change,
+        elo: newElo,
+      }
+
+      transactions.push(
+        this.prisma.user.update({
+          where: {
+            id: Number(placement.playerId),
+          },
+          data: {
+            elo: newElo,
+          },
+        })
+      )
+    })
+
+    await this.prisma.$transaction(transactions)
+
+    this.state.events.push(
+      new SchemaEvent(GameEvent.GAME_ENDED, JSON.stringify(data))
+    )
+
+    this.gameController.endGame()
   }
 
   handlePingObject({

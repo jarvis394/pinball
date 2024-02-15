@@ -22,6 +22,7 @@ export interface Snapshot extends Types.Snapshot {
   time: Types.Time
   mapName: GameMapName
   playerId: string
+  playerScore: number
   playerHighScore: number
   playerCurrentScore: number
   mapActiveObjects: string[]
@@ -64,6 +65,7 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
     time: Date.now(),
     mapName: engine.game.world.mapName,
     playerId: player.id,
+    playerScore: player.score,
     playerHighScore: player.highScore,
     playerCurrentScore: player.currentScore,
     mapActiveObjects,
@@ -92,12 +94,10 @@ export const restorePlayerFromSnapshot = (
 ) => {
   const enginePlayer = engine.game.world.players.get(snapshot.playerId)
   if (!enginePlayer) {
-    console.warn(
-      `restorePlayerFromSnapshot: Engine does not have player with ID ${snapshot.playerId}`
-    )
     return engine
   }
 
+  enginePlayer.score = snapshot.playerScore
   enginePlayer.currentScore = snapshot.playerCurrentScore
   enginePlayer.highScore = snapshot.playerHighScore
 
@@ -121,16 +121,10 @@ export const restorePinballsFromSnapshot = (
   pinballs: Snapshot['state']['pinballs']
 ) => {
   pinballs.forEach((snapshotPinball) => {
-    let enginePinball = engine.game.world.pinballs.get(snapshotPinball.id)
+    const enginePinball = engine.game.world.pinballs.get(snapshotPinball.id)
 
     if (!enginePinball) {
-      console.warn(
-        `restorePinballsFromSnapshot: Engine does not have pinball with ID ${snapshotPinball.id}`
-      )
-      enginePinball = engine.game.world.addPinballForPlayer(
-        snapshotPinball.id,
-        snapshotPinball.playerId
-      )
+      return
     }
 
     Matter.Body.setPosition(

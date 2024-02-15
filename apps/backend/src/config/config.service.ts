@@ -6,6 +6,7 @@ type EnvSchema = {
   MULTIPLAYER_PORT: string
   DATABASE_URL: string
   VK_APP_SECRET: string
+  VK_APP_SERVICE_TOKEN: string
 }
 
 @Injectable()
@@ -26,5 +27,9 @@ export class ConfigService {
 
   get VK_APP_SECRET() {
     return this.configService.get('VK_APP_SECRET')
+  }
+
+  get VK_APP_SERVICE_TOKEN() {
+    return this.configService.get('VK_APP_SERVICE_TOKEN')
   }
 }

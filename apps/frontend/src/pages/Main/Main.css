@@ -60,27 +60,3 @@
   margin: 0;
   opacity: 0.63;
 }
-
-.Main__startGame {
-  display: flex;
-  background-color: #cd965a;
-  color: #161615;
-  flex-direction: row;
-  padding: 0 16px;
-  gap: 8px;
-  height: 80px;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  font-weight: 600;
-  border: none;
-  text-decoration: none;
-  transition: opacity 240ms ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.Main__startGame:active {
-  opacity: 0.8;
-  transition: opacity 0ms ease;
-}

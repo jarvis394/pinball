@@ -1,12 +1,14 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import { FetchingState } from '../types/FetchingState'
 import { getRoom } from '../api/matchmaking'
 import { matchMaker } from 'colyseus'
+import { ClientEngineGameResultsEventData } from '../models/ClientEngine'
 
 export interface MatchmakingState {
   reservation: matchMaker.SeatReservation | null
   status: FetchingState
   fetchError: string | null
+  gameResults?: ClientEngineGameResultsEventData
   currentRequestId?: string
 }
 
@@ -27,7 +29,20 @@ export const fetchMatchmakingRoom = createAsyncThunk<
 export const matchmakingSlice = createSlice({
   name: 'matchmaking',
   initialState,
-  reducers: {},
+  reducers: {
+    setGameResults(
+      state,
+      { payload }: PayloadAction<ClientEngineGameResultsEventData>
+    ) {
+      state.gameResults = payload
+    },
+    resetMatchmakingRoom(state) {
+      state.status = FetchingState.IDLE
+      state.currentRequestId = undefined
+      state.fetchError = null
+      state.reservation = null
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchMatchmakingRoom.pending, (state) => {
@@ -44,5 +59,7 @@ export const matchmakingSlice = createSlice({
       })
   },
 })
+
+export const { setGameResults, resetMatchmakingRoom } = matchmakingSlice.actions
 
 export default matchmakingSlice.reducer

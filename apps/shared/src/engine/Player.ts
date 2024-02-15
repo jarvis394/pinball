@@ -8,6 +8,8 @@ export type PlayerConstructorProps = {
 export class Player {
   id: string
   world: World
+  /** Sum of all scores from previous rounds */
+  score: number
   currentScore: number
   highScore: number
   /**
@@ -29,6 +31,7 @@ export class Player {
     this.isMe = false
     this.isServerControlled = false
     this.latency = 0
+    this.score = 0
     this.currentScore = 0
     this.highScore = 0
   }
@@ -46,6 +49,7 @@ export class Player {
   }
 
   public addPoints(points: number) {
+    this.score += points
     this.currentScore += points
     this.highScore = Math.max(this.highScore, this.currentScore)
   }

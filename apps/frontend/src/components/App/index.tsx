@@ -22,14 +22,22 @@ const AppUnmemoized: React.FC = () => {
 
   useMountEffect(() => {
     bridge.send('VKWebAppInit')
-    bridge.send('VKWebAppGetUserInfo').then((data) => {
+
+    const getUserData = async () => {
+      const userInfoResponse = await bridge.send('VKWebAppGetUserInfo')
+
       dispatch(
         setUserBridgeData({
-          fullname: [data.first_name, data.last_name].join(' '),
-          avatarUrl: data.photo_200,
+          fullname: [
+            userInfoResponse.first_name,
+            userInfoResponse.last_name,
+          ].join(' '),
+          avatarUrl: userInfoResponse.photo_200,
         })
       )
-    })
+    }
+
+    getUserData()
 
     dispatch(fetchUserData())
   })
