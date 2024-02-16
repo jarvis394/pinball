@@ -11,16 +11,18 @@ services:
       - .env
     expose:
       - '${BACKEND_PORT}'
+      - '${MULTIPLAYER_PORT}'
+    ports:
+      - '${BACKEND_PORT}:${BACKEND_PORT}'
+      - '${MULTIPLAYER_PORT}:${BACKEND_PORT}'
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     command: sh -c "yarn prisma migrate deploy && node dist/main.js"
-    healthcheck:
-      test: ['CMD', 'pg_isready']
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    restart: on-failure
 
   frontend:
+    profiles: ['frontend']
     build:
       context: ./
       dockerfile: Dockerfile.frontend
@@ -45,6 +47,11 @@ services:
     expose:
       - '5432'
     restart: always
+    healthcheck:
+      test: ['CMD', 'pg_isready']
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   pgadmin:
     container_name: pgadmin
@@ -68,6 +75,7 @@ services:
   nginx:
     image: nginx:latest
     container_name: proxy_nginx
+    profiles: ['frontend']
     depends_on:
       - backend
       - db
@@ -77,3 +85,8 @@ services:
     volumes:
       - ./nginx/nginx.proxy.conf:/etc/nginx/conf.d/default.conf
     restart: always
+    healthcheck:
+      test: ['CMD', 'pg_isready']
+      interval: 10s
+      timeout: 5s
+      retries: 5
