@@ -47,17 +47,30 @@ export const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchUserData.pending, (state) => {
+      .addCase(fetchUserData.pending, (state, action) => {
         state.status = FetchingState.PENDING
+        state.currentRequestId = action.meta.requestId
       })
       .addCase(fetchUserData.fulfilled, (state, action) => {
-        state.status = FetchingState.FULFILLED
-        state.data = action.payload
+        const { requestId } = action.meta
+        if (
+          state.status === FetchingState.PENDING &&
+          state.currentRequestId === requestId
+        ) {
+          state.status = FetchingState.FULFILLED
+          state.data = action.payload
+        }
       })
       .addCase(fetchUserData.rejected, (state, action) => {
-        state.status = FetchingState.REJECTED
-        state.data = null
-        state.fetchError = action.error.message || 'Internal Error'
+        const { requestId } = action.meta
+        if (
+          state.status === FetchingState.PENDING &&
+          state.currentRequestId === requestId
+        ) {
+          state.status = FetchingState.REJECTED
+          state.data = null
+          state.fetchError = action.error.message || 'Internal Error'
+        }
       })
   },
 })

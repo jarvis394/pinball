@@ -31,8 +31,14 @@ export const PIXI_CANVAS_CONTAINER_ID = 'pixi-container'
 export const MATTER_CANVAS_ID = 'matter-canvas'
 
 const Game: React.FC = () => {
+  const [currentReservationRequestId, setCurrentReservationRequestId] =
+    useState('')
   const navigate = useNavigate()
   const userId = useAppSelector((store) => store.user.data?.id)
+  const reservationRequestId = useAppSelector(
+    (store) => store.matchmaking.currentRequestId
+  )
+  const bridgeData = useAppSelector((store) => store.user.bridgeData)
   const reservation = useAppSelector((store) => store.matchmaking.reservation)
   const client = useRef(new Colyseus.Client(MULTIPLAYER_URL))
   const [room, setRoom] = useState<Colyseus.Room<GameRoomState>>()
@@ -85,6 +91,7 @@ const Game: React.FC = () => {
     scene.current = new MainScene({
       app: app.current,
       engine: engine.current,
+      localVKUserData: bridgeData || undefined,
     })
 
     scene.current.clientEngine.addEventListener(
@@ -125,7 +132,7 @@ const Game: React.FC = () => {
       scene.current?.destroy()
       room?.connection?.isOpen && room?.leave(true)
     }
-  }, [client, updatePlayerData, room, handleGameEndEvent])
+  }, [client, updatePlayerData, room, handleGameEndEvent, bridgeData])
 
   // Creates engine and PIXI application
   useMountEffect(() => {
@@ -145,12 +152,14 @@ const Game: React.FC = () => {
 
   // Requests to server for room reservation
   useMountEffect(() => {
-    dispatch(fetchMatchmakingRoom())
+    const request = dispatch(fetchMatchmakingRoom())
+    setCurrentReservationRequestId(request.requestId)
   })
 
   // Connects to room when reservation from server arrives
   useEffect(() => {
-    if (!reservation) return
+    if (!reservation || currentReservationRequestId !== reservationRequestId)
+      return
 
     const consumeReservation = async () => {
       const res = await client.current.consumeSeatReservation<GameRoomState>(
@@ -160,7 +169,7 @@ const Game: React.FC = () => {
     }
 
     consumeReservation()
-  }, [reservation])
+  }, [currentReservationRequestId, reservation, reservationRequestId])
 
   return (
     <div className="Game">

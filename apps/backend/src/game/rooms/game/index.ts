@@ -22,7 +22,8 @@ import {
   exhaustivnessCheck,
 } from '@pinball/shared'
 import GameController from '../../controllers/GameController'
-import { PrismaClient, User } from '@prisma/client'
+import { User } from '@prisma/client'
+import { prismaClient } from '../../game.service'
 
 export interface ClientData {
   userId?: string
@@ -38,7 +39,6 @@ export class GameRoom extends Room<GameRoomState> {
   gameController: GameController
   mapName: GameMapName
   dbPlayersData: Record<string, User>
-  prisma = new PrismaClient()
 
   constructor() {
     super()
@@ -105,7 +105,7 @@ export class GameRoom extends Room<GameRoomState> {
       userId: gamePlayer.id,
     }
 
-    const dbUser = await this.prisma.user.findUnique({
+    const dbUser = await prismaClient.user.findUnique({
       where: {
         id: Number(gamePlayer.id),
       },
@@ -256,7 +256,7 @@ export class GameRoom extends Room<GameRoomState> {
       }
 
       transactions.push(
-        this.prisma.user.update({
+        prismaClient.user.update({
           where: {
             id: Number(placement.playerId),
           },
@@ -267,7 +267,7 @@ export class GameRoom extends Room<GameRoomState> {
       )
     })
 
-    await this.prisma.$transaction(transactions)
+    await prismaClient.$transaction(transactions)
 
     this.state.events.push(
       new SchemaEvent(GameEvent.GAME_ENDED, JSON.stringify(data))

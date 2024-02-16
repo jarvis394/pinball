@@ -1,10 +1,13 @@
 import { Injectable, OnApplicationShutdown } from '@nestjs/common'
 import { WebSocketTransport } from '@colyseus/ws-transport'
 import { Server, Room } from 'colyseus'
+import { PrismaClient } from '@prisma/client'
 import * as http from 'http'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Type<T> = new (...args: any[]) => T
+
+export const prismaClient = new PrismaClient()
 
 @Injectable()
 export class GameService implements OnApplicationShutdown {

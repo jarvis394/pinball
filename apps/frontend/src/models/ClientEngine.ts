@@ -26,6 +26,7 @@ import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
 import {
   ClientEnginePlayer,
   ClientEnginePlayerJson,
+  VKUserData,
 } from './ClientEnginePlayer'
 
 const parseData = <T>(data?: string) => {
@@ -77,13 +78,21 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   room?: Colyseus.Room<GameRoomState>
   userId: string | null
   keysPressed: Set<string> = new Set()
+  /** Stores keys from onKeyUp and onTouchEnd events */
+  keysReleased: Set<string> = new Set()
   heldKeys: Set<string> = new Set()
   timeOffset: number
   snapshots: SnapshotInterpolation
   players: Map<string, ClientEnginePlayer> = new Map()
   deferredEvents: SnapshotEvent[] = []
 
-  constructor(engine: Engine, userId: string | null) {
+  private localVKUserData?: VKUserData
+
+  constructor(
+    engine: Engine,
+    userId: string | null,
+    localVKUserData?: VKUserData
+  ) {
     super()
 
     this.engine = engine
@@ -92,6 +101,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.snapshots = new SnapshotInterpolation(Engine.MIN_FPS, {
       autoCorrectTimeOffset: true,
     })
+    this.localVKUserData = localVKUserData
 
     // Disable collisions locally because events come with snapshots
     this.engine.game.world.disableCollisions()
@@ -102,8 +112,8 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       this.handleBeforeUpdate.bind(this)
     )
 
-    // window.addEventListener('touchstart', this.onTouchStart.bind(this))
-    // window.addEventListener('touchend', this.onTouchEnd.bind(this))
+    window.addEventListener('touchstart', this.onTouchStart.bind(this))
+    window.addEventListener('touchend', this.onTouchEnd.bind(this))
     window.addEventListener('keydown', this.onKeyDown.bind(this))
     window.addEventListener('keyup', this.onKeyUp.bind(this))
 
@@ -248,6 +258,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
   handleBeforeUpdate() {
     this.handlePressedKeys()
+    this.handleReleasedKeys()
   }
 
   update() {
@@ -281,8 +292,11 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
         case GameEvent.GAME_ENDED:
         case GameEvent.PLAYER_JOIN:
         case GameEvent.PLAYER_LEFT:
-        case GameEvent.PLAYER_LOST_ROUND:
           break
+        case GameEvent.PLAYER_LOST_ROUND: {
+          this.handlePlayerLostRoundEvent(event.data)
+          break
+        }
         case GameEvent.PING_OBJECTS:
           this.handlePingObjectsEvent(event.data)
           break
@@ -305,6 +319,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
         case GameEvent.PLAYER_PINBALL_REDEPLOY:
           break
         // Deferred events executed on snapshots sync (ClientEngine.update)
+        case GameEvent.PLAYER_LOST_ROUND:
         case GameEvent.PING_OBJECTS: {
           this.deferredEvents.push(event)
           break
@@ -319,10 +334,6 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
         }
         case GameEvent.PLAYER_LEFT: {
           this.handlePlayerLeftEvent(event.data)
-          break
-        }
-        case GameEvent.PLAYER_LOST_ROUND: {
-          this.handlePlayerLostRoundEvent(event.data)
           break
         }
         default:
@@ -362,6 +373,8 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       score: 0,
       currentScore: 0,
       highScore: 0,
+      vkUserData:
+        this.userId === data.playerId ? this.localVKUserData : undefined,
     })
     this.players.set(data.playerId, clientEnginePlayer)
 
@@ -460,6 +473,26 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     })
   }
 
+  handleReleasedKeys() {
+    this.keysReleased.forEach((keyCode) => {
+      switch (keyCode) {
+        case ClientInputActionKeyCodes.LEFT:
+          this.handleDeactivateObjects([ClientEngine.PADDLE_LEFT_LABEL])
+          break
+        case ClientInputActionKeyCodes.RIGHT:
+          this.handleDeactivateObjects([ClientEngine.PADDLE_RIGHT_LABEL])
+          break
+        case ClientInputActionKeyCodes.SPACE:
+          this.handleDeactivateObjects([
+            ClientEngine.PADDLE_LEFT_LABEL,
+            ClientEngine.PADDLE_RIGHT_LABEL,
+          ])
+          break
+      }
+    })
+    this.keysReleased.clear()
+  }
+
   handleActivateObjects(labels: string[]) {
     this.room?.send(GameEvent.ACTIVATE_OBJECTS, labels)
   }
@@ -473,23 +506,37 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   }
 
   onKeyUp(e: KeyboardEvent) {
-    this.keysPressed.delete(e.code)
-    this.heldKeys.delete(e.code)
+    this.releaseKeyByKeyCode(e.code)
+  }
 
-    switch (e.code) {
-      case ClientInputActionKeyCodes.LEFT:
-        this.handleDeactivateObjects([ClientEngine.PADDLE_LEFT_LABEL])
-        break
-      case ClientInputActionKeyCodes.RIGHT:
-        this.handleDeactivateObjects([ClientEngine.PADDLE_RIGHT_LABEL])
-        break
-      case ClientInputActionKeyCodes.SPACE:
-        this.handleDeactivateObjects([
-          ClientEngine.PADDLE_LEFT_LABEL,
-          ClientEngine.PADDLE_RIGHT_LABEL,
-        ])
-        break
+  releaseKeyByKeyCode(keyCode: string) {
+    this.heldKeys.delete(keyCode)
+    this.keysPressed.delete(keyCode)
+    this.keysReleased.add(keyCode)
+  }
+
+  onTouchStart(e: TouchEvent) {
+    for (const touch of e.touches) {
+      if (touch.clientX < window.innerWidth / 2) {
+        this.keysPressed.add(ClientInputActionKeyCodes.LEFT)
+      } else {
+        this.keysPressed.add(ClientInputActionKeyCodes.RIGHT)
+      }
     }
+
+    return false
+  }
+
+  onTouchEnd(e: TouchEvent) {
+    for (const touch of e.changedTouches) {
+      if (touch.clientX < window.innerWidth / 2) {
+        this.releaseKeyByKeyCode(ClientInputActionKeyCodes.LEFT)
+      } else {
+        this.releaseKeyByKeyCode(ClientInputActionKeyCodes.RIGHT)
+      }
+    }
+
+    return false
   }
 
   destroy() {
@@ -498,5 +545,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.engine.destroy()
     window.removeEventListener('keydown', this.onKeyDown)
     window.removeEventListener('keyup', this.onKeyUp)
+    window.removeEventListener('touchstart', this.onTouchStart)
+    window.removeEventListener('touchend', this.onTouchEnd)
   }
 }

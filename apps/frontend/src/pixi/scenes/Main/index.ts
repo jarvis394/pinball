@@ -9,10 +9,12 @@ import CurrentScore from '../../components/CurrentScore'
 import { Debug } from '../../components/Debug'
 import { ENABLE_DEBUG_OVERLAY } from '../../../config/constants'
 import Timer from '../../components/Timer'
+import { VKUserData } from '../../../models/ClientEnginePlayer'
 
 type MainSceneProps = {
   app: Application
   engine: Engine
+  localVKUserData?: VKUserData
 }
 
 class MainScene extends PIXIObject {
@@ -25,11 +27,11 @@ class MainScene extends PIXIObject {
   timer: Timer
   debugOverlay: Debug
 
-  constructor({ app, engine }: MainSceneProps) {
+  constructor({ app, engine, localVKUserData }: MainSceneProps) {
     super(app, engine)
     this.userId = this.getUserId()
     this.viewport = new Viewport(app, engine)
-    this.clientEngine = new ClientEngine(engine, this.userId)
+    this.clientEngine = new ClientEngine(engine, this.userId, localVKUserData)
     this.gameMap = new GameMap(app, this.clientEngine)
     this.currentScore = new CurrentScore(engine)
     this.timer = new Timer(engine)

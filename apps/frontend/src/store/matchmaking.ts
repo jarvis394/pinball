@@ -45,17 +45,31 @@ export const matchmakingSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMatchmakingRoom.pending, (state) => {
+      .addCase(fetchMatchmakingRoom.pending, (state, action) => {
         state.status = FetchingState.PENDING
+        state.reservation = null
+        state.currentRequestId = action.meta.requestId
       })
       .addCase(fetchMatchmakingRoom.fulfilled, (state, action) => {
-        state.status = FetchingState.FULFILLED
-        state.reservation = action.payload
+        const { requestId } = action.meta
+        if (
+          state.status === FetchingState.PENDING &&
+          state.currentRequestId === requestId
+        ) {
+          state.status = FetchingState.FULFILLED
+          state.reservation = action.payload
+        }
       })
       .addCase(fetchMatchmakingRoom.rejected, (state, action) => {
-        state.status = FetchingState.REJECTED
-        state.reservation = null
-        state.fetchError = action.error.message || 'Internal Error'
+        const { requestId } = action.meta
+        if (
+          state.status === FetchingState.PENDING &&
+          state.currentRequestId === requestId
+        ) {
+          state.status = FetchingState.REJECTED
+          state.reservation = null
+          state.fetchError = action.error.message || 'Internal Error'
+        }
       })
   },
 })

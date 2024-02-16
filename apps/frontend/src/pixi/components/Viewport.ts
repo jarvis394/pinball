@@ -8,6 +8,8 @@ import MainLoop from 'mainloop.js'
 import { ENABLE_DEBUG_OVERLAY } from '../../config/constants'
 
 class Viewport {
+  public static PADDING = 16
+
   app: Application
   engine: Engine
   root: PixiViewport
@@ -94,8 +96,8 @@ class Viewport {
         showAngleIndicator: true,
         showVelocity: true,
         pixelRatio: window.devicePixelRatio || 1,
+        showPerformance: true,
         showStats: true,
-        showDebug: true,
         hasBounds: true,
       },
     })
@@ -174,7 +176,8 @@ class Viewport {
   getViewportDimensions() {
     const x = this.worldWidth / 2
     const y = this.worldHeight / 2
-    const largestWorldSide = Math.max(this.worldWidth, this.worldHeight)
+    const largestWorldSide =
+      Math.max(this.worldWidth, this.worldHeight) + Viewport.PADDING * 2
     let scale = Math.min(this.screenHeight / largestWorldSide, 1)
 
     // Ajust to very narrow screen

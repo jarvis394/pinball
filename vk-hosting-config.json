@@ -1,0 +1,10 @@
+{
+  "noprompt": true,
+  "static_path": "dist/apps/frontend",
+  "app_id": 51856120,
+  "endpoints": {
+    "mobile": "index.html",
+    "mvk": "index.html",
+    "web": "index.html"
+  }
+}
