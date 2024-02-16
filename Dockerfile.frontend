@@ -16,7 +16,7 @@ COPY .env ./.env
 COPY nx.json ./nx.json
 
 RUN yarn nx reset
-RUN yarn nx build frontend
+RUN yarn nx run frontend:build:production
 
 FROM nginx:1.25.2-alpine as production
 

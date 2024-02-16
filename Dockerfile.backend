@@ -14,7 +14,7 @@ COPY .env ./.env
 COPY nx.json ./nx.json
 
 RUN yarn nx reset
-RUN yarn build:back
+RUN yarn nx run backend:build:production
 
 FROM node:20-alpine as production
 
