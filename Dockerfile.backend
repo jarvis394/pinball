@@ -7,8 +7,8 @@ COPY yarn.lock .
 
 RUN yarn
 
-COPY packages/backend ./packages/backend
-COPY packages/shared ./packages/shared
+COPY apps/backend ./apps/backend
+COPY apps/shared ./apps/shared
 COPY tsconfig.base.json ./tsconfig.base.json
 COPY .env ./.env
 COPY nx.json ./nx.json
@@ -21,7 +21,7 @@ FROM node:20-alpine as production
 WORKDIR /app
 
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist/packages/backend ./dist
+COPY --from=build /app/dist/apps/backend ./dist
 COPY --from=build /prisma .
 COPY --from=build /app/package.json .
 
