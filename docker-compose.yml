@@ -14,7 +14,7 @@ services:
       - '${MULTIPLAYER_PORT}'
     ports:
       - '${BACKEND_PORT}:${BACKEND_PORT}'
-      - '${MULTIPLAYER_PORT}:${BACKEND_PORT}'
+      - '${MULTIPLAYER_PORT}:${MULTIPLAYER_PORT}'
     depends_on:
       db:
         condition: service_healthy
