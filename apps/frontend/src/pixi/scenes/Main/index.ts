@@ -7,9 +7,9 @@ import GameMap from '../../components/GameMap'
 import Pinball from '../../components/Pinball'
 import CurrentScore from '../../components/CurrentScore'
 import { Debug } from '../../components/Debug'
-import { ENABLE_DEBUG_OVERLAY } from '../../../config/constants'
 import Timer from '../../components/Timer'
 import { VKUserData } from '../../../models/ClientEnginePlayer'
+import { ENABLE_DEBUG_OVERLAY } from '../../../config/constants'
 
 type MainSceneProps = {
   app: Application
@@ -25,7 +25,7 @@ class MainScene extends PIXIObject {
   gameMap: GameMap
   currentScore: CurrentScore
   timer: Timer
-  debugOverlay: Debug
+  debugOverlay?: Debug
 
   constructor({ app, engine, localVKUserData }: MainSceneProps) {
     super(app, engine)
@@ -36,13 +36,16 @@ class MainScene extends PIXIObject {
     this.currentScore = new CurrentScore(engine)
     this.timer = new Timer(engine)
     this.pinballs = new Map()
-    this.debugOverlay = new Debug(this.clientEngine)
 
     this.viewport.addChild(this.gameMap.root)
     this.viewport.addChild(this.currentScore)
 
     if (ENABLE_DEBUG_OVERLAY) {
-      this.viewport.addChild(this.debugOverlay)
+      this.debugOverlay = new Debug(this.clientEngine)
+      this.debugOverlay.addChildrenForViewport(
+        this.viewport.addChild.bind(this.viewport)
+      )
+      this.debugOverlay.addChildrenForScene(this.addChild.bind(this))
     }
 
     this.addChild(this.viewport.root)
@@ -105,7 +108,7 @@ class MainScene extends PIXIObject {
 
     this.gameMap.init()
     this.gameMap.mask && this.viewport.addChild(this.gameMap.mask)
-    this.debugOverlay.init()
+    this.debugOverlay?.init()
     this.currentScore.init()
     this.timer.init()
     this.viewport.init()
@@ -123,7 +126,7 @@ class MainScene extends PIXIObject {
     this.gameMap.update()
     this.currentScore.update()
     this.timer.update()
-    this.debugOverlay.update()
+    this.debugOverlay?.update()
   }
 }
 

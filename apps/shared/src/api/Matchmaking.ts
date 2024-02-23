@@ -1,6 +1,8 @@
 import { matchMaker } from 'colyseus'
 
-export type MatchmakingGetRoomReq = object
+export type MatchmakingGetRoomReq = {
+  singleplayer?: boolean
+}
 export type MatchmakingGetRoomRes = {
   reservation: matchMaker.SeatReservation
 }

@@ -30,7 +30,11 @@ import './Game.css'
 export const PIXI_CANVAS_CONTAINER_ID = 'pixi-container'
 export const MATTER_CANVAS_ID = 'matter-canvas'
 
-const Game: React.FC = () => {
+type GameProps = {
+  singleplayer?: boolean
+}
+
+const Game: React.FC<GameProps> = ({ singleplayer }) => {
   const [currentReservationRequestId, setCurrentReservationRequestId] =
     useState('')
   const navigate = useNavigate()
@@ -49,7 +53,7 @@ const Game: React.FC = () => {
   const scene = useRef<MainScene>()
   const [opponentPlayer, setOpponentPlayer] = useState<ClientEnginePlayerJson>()
   const [localPlayer, setLocalPlayer] = useState<ClientEnginePlayerJson>()
-  const shouldShowCancelSearchButton = !opponentPlayer
+  const shouldShowCancelSearchButton = !opponentPlayer && !singleplayer
 
   const updatePlayerData = useCallback(
     async (player: ClientEnginePlayer) => {
@@ -152,7 +156,8 @@ const Game: React.FC = () => {
 
   // Requests to server for room reservation
   useMountEffect(() => {
-    const request = dispatch(fetchMatchmakingRoom())
+    console.log('Requesting with singleplayer:', singleplayer)
+    const request = dispatch(fetchMatchmakingRoom(singleplayer))
     setCurrentReservationRequestId(request.requestId)
   })
 
@@ -182,7 +187,7 @@ const Game: React.FC = () => {
           отмена
         </Button>
       )}
-      <PlayerInfo player={opponentPlayer} />
+      {!singleplayer && <PlayerInfo player={opponentPlayer} />}
       <div
         id={PIXI_CANVAS_CONTAINER_ID}
         className="Game__pixiContainer"

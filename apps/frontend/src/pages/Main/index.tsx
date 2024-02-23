@@ -17,6 +17,10 @@ const Main: React.FC = () => {
     navigate(routes.game.path)
   }
 
+  const handleNavigateToSingleplayerGame = () => {
+    navigate(routes.singleplayerGame.path)
+  }
+
   return (
     <div className="Main">
       <div className="Main__logoContainer">
@@ -34,14 +38,24 @@ const Main: React.FC = () => {
           <p>{user?.elo} ELO</p>
         </div>
       </div>
-      <Button
-        Component={'a'}
-        variant="primary"
-        fullWidth
-        onClick={handleNavigateToGame}
-      >
-        играть
-      </Button>
+      <div className="Main__buttonsContainer">
+        <Button
+          Component={'a'}
+          variant="default"
+          fullWidth
+          onClick={handleNavigateToSingleplayerGame}
+        >
+          одиночная игра
+        </Button>
+        <Button
+          Component={'a'}
+          variant="primary"
+          fullWidth
+          onClick={handleNavigateToGame}
+        >
+          играть
+        </Button>
+      </div>
     </div>
   )
 }

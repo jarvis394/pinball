@@ -1,16 +1,17 @@
-import { Controller, Get, Request } from '@nestjs/common'
+import { Body, Controller, Post, Request } from '@nestjs/common'
 import { MatchmakingService } from './matchmaking.service'
 import { RequestWithUser } from '../auth/auth.guard'
-import { MatchmakingGetRoomRes } from '@pinball/shared'
+import { MatchmakingGetRoomReq, MatchmakingGetRoomRes } from '@pinball/shared'
 
 @Controller('matchmaking')
 export class MatchmakingController {
   constructor(private readonly matchmakingService: MatchmakingService) {}
 
-  @Get()
+  @Post()
   async queueRoom(
-    @Request() req: RequestWithUser
+    @Request() req: RequestWithUser,
+    @Body() body: MatchmakingGetRoomReq
   ): Promise<MatchmakingGetRoomRes> {
-    return await this.matchmakingService.queueRoom(req.user.vkUserId)
+    return await this.matchmakingService.queueRoom(req.user.vkUserId, body)
   }
 }

@@ -5,7 +5,7 @@ export const getRoom = async (data: MatchmakingGetRoomReq) => {
   return await makeRequest<MatchmakingGetRoomRes>({
     path: 'matchmaking',
     requestOptions: {
-      method: 'get',
+      method: 'post',
       data,
     },
   })

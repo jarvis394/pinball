@@ -20,9 +20,9 @@ export const initialState: MatchmakingState = {
 
 export const fetchMatchmakingRoom = createAsyncThunk<
   matchMaker.SeatReservation | null,
-  void
->('matchmaking/getRoom', async () => {
-  const response = await getRoom({})
+  boolean | undefined
+>('matchmaking/getRoom', async (singleplayer = false) => {
+  const response = await getRoom({ singleplayer })
   return response.reservation
 })
 

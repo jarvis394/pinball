@@ -2,7 +2,7 @@ import {
   Engine,
   EventEmitter,
   GAME_MAPS,
-  GameEvent,
+  GameEventName,
   GameMapObjectType,
   GameResultsEventData,
   GameRoomState,
@@ -16,9 +16,15 @@ import {
   SnapshotEvent,
   SnapshotPinball,
   exhaustivnessCheck,
+  generateSnapshot,
+  restoreEngineFromSnapshot,
   restoreMapActiveObjectsFromSnapshot,
   restorePinballsFromSnapshot,
   restorePlayerFromSnapshot,
+  areSnapshotsClose,
+  SchemaPlayer,
+  ActivateObjectsEventData,
+  DeactivateObjectsEventData,
 } from '@pinball/shared'
 import Matter from 'matter-js'
 import * as Colyseus from 'colyseus.js'
@@ -74,6 +80,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   private static PADDLE_RIGHT_LABEL = 'paddle_bottom_right'
 
   engine: Engine
+  localEngine: Engine
   client?: Colyseus.Client
   room?: Colyseus.Room<GameRoomState>
   userId: string | null
@@ -85,7 +92,10 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   snapshots: SnapshotInterpolation
   players: Map<string, ClientEnginePlayer> = new Map()
   deferredEvents: SnapshotEvent[] = []
+  clientSnapshots: SnapshotInterpolation
 
+  private clientSnapshotsVault: Map<string, Snapshot> = new Map()
+  private clientSnapshotsLast = '0'
   private localVKUserData?: VKUserData
 
   constructor(
@@ -96,15 +106,17 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     super()
 
     this.engine = engine
+    this.localEngine = new Engine()
     this.userId = userId
     this.timeOffset = -1
+    this.clientSnapshots = new SnapshotInterpolation(Engine.MIN_FPS)
     this.snapshots = new SnapshotInterpolation(Engine.MIN_FPS, {
       autoCorrectTimeOffset: true,
     })
     this.localVKUserData = localVKUserData
 
-    // Disable collisions locally because events come with snapshots
-    this.engine.game.world.disableCollisions()
+    this.snapshots.vault.setMaxSize(500)
+    this.clientSnapshots.vault.setMaxSize(500)
 
     Matter.Events.on(
       this.engine.matterEngine,
@@ -149,33 +161,37 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     })
 
     this.room.onStateChange(this.handleRoomStateChange.bind(this))
-    this.room.onMessage(GameEvent.INIT, this.handleRoomInit.bind(this))
-    this.room.onMessage(GameEvent.GAME_STARTED, this.handleGameStart.bind(this))
+    this.room.onMessage(GameEventName.INIT, this.handleRoomInit.bind(this))
+    this.room.onMessage(
+      GameEventName.GAME_STARTED,
+      this.handleGameStart.bind(this)
+    )
   }
 
   handleGameStart(data: GameStartedEventData) {
     console.log('Starting game', data)
     this.engine.game.startGame()
+    this.localEngine.game.startGame()
   }
 
   handleRoomInit(initData: InitEventData) {
     if (!this.userId) return
-    if (!this.engine.game.world.map) {
-      this.engine.game.loadMap(GAME_MAPS[this.room!.state.mapName])
-    }
+    this.engine.game.loadMap(GAME_MAPS[this.room!.state.mapName])
+    this.localEngine.game.loadMap(GAME_MAPS[this.room!.state.mapName])
 
     const events: SnapshotEvent[] = []
 
     // Add all players from state to client engine
     Object.values(initData.players).forEach((userData) => {
       const data: PlayerJoinEventData = {
+        name: GameEventName.PLAYER_JOIN,
         elo: userData.elo,
         playerId: userData.id.toString(),
         frame: 0,
         time: 0,
       }
       events.push({
-        event: GameEvent.PLAYER_JOIN,
+        event: GameEventName.PLAYER_JOIN,
         data: JSON.stringify(data),
       })
     })
@@ -254,11 +270,124 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
     this.snapshots.snapshot.add(snapshot)
     this.processSnapshotEvents(snapshot.events)
+
+    const clientSnapshot = generateSnapshot(this.engine)
+    if (clientSnapshot) {
+      this.clientSnapshots.snapshot.add(clientSnapshot)
+    }
+
+    this.reconcileEngine()
+  }
+
+  getLatestSnapshots = (): {
+    serverSnapshot: Snapshot | undefined
+    playerSnapshot: Snapshot | undefined
+  } => {
+    const serverSnapshot = this.snapshots.vault.get() as Snapshot | undefined
+    const playerSnapshot = this.clientSnapshotsVault.get(
+      this.clientSnapshotsLast
+    ) as Snapshot | undefined
+
+    return { serverSnapshot, playerSnapshot }
+  }
+
+  syncEngineByLocalEngine() {
+    this.localEngine.game.world.pinballs.forEach((reconciledPinball) => {
+      const enginePinball = this.engine.game.world.pinballs.get(
+        reconciledPinball.id
+      )
+
+      if (!enginePinball) return
+
+      const offsetX =
+        enginePinball.body.position.x - reconciledPinball.body.position.x
+      const offsetY =
+        enginePinball.body.position.y - reconciledPinball.body.position.y
+      const correctionCoeff = 1
+
+      Matter.Body.setPosition(
+        enginePinball.body,
+        Matter.Vector.create(
+          enginePinball.body.position.x - offsetX / correctionCoeff,
+          enginePinball.body.position.y - offsetY / correctionCoeff
+        )
+      )
+    })
+  }
+
+  reconcileEngine() {
+    const { serverSnapshot, playerSnapshot } = this.getLatestSnapshots()
+    if (!serverSnapshot || !playerSnapshot) return
+
+    this.reconcilePinballs(serverSnapshot, playerSnapshot)
+  }
+
+  reconcilePinballs(serverSnapshot: Snapshot, playerSnapshot: Snapshot) {
+    const presentTime = playerSnapshot.time
+    const serverTime = serverSnapshot.time
+    let currentClientSnapshot = this.clientSnapshotsVault.get(
+      Number(serverSnapshot.id).toString()
+    ) as Snapshot | undefined
+    const frames = (presentTime - serverTime) / Engine.MIN_DELTA
+
+    if (
+      currentClientSnapshot &&
+      areSnapshotsClose(currentClientSnapshot, serverSnapshot)
+    ) {
+      return
+    }
+
+    restoreEngineFromSnapshot(this.localEngine, serverSnapshot, {
+      restoreNonServerControlled: true,
+    })
+    this.localEngine.frame = Number(serverSnapshot.id)
+
+    for (let i = 0; i < frames; i++) {
+      currentClientSnapshot = this.clientSnapshotsVault.get(
+        (i + Number(serverSnapshot.id)).toString()
+      ) as Snapshot | undefined
+
+      currentClientSnapshot?.events.forEach((event) => {
+        switch (event.event) {
+          case GameEventName.ACTIVATE_OBJECTS:
+            console.log('activate objects', event.data)
+            this.handleActivateObjectsInLocalEngine(
+              JSON.parse(event.data || '')
+            )
+            break
+          case GameEventName.DEACTIVATE_OBJECTS:
+            console.log('deactivate objects', event.data)
+            this.handleDeactivateObjectsInLocalEngine(
+              JSON.parse(event.data || '')
+            )
+            break
+          case GameEventName.PLAYER_LOST_ROUND:
+            console.log('lose round')
+            // this.handlePlayerLostRoundEvent(JSON.parse(event.data || ''))
+            break
+        }
+      })
+
+      this.localEngine.update(Engine.MIN_DELTA)
+      this.clientSnapshotsVault.set(
+        this.localEngine.frame.toString(),
+        generateSnapshot(this.localEngine)
+      )
+    }
   }
 
   handleBeforeUpdate() {
     this.handlePressedKeys()
     this.handleReleasedKeys()
+
+    this.localEngine.update(Engine.MIN_DELTA)
+
+    const snapshot = generateSnapshot(this.engine)
+    if (snapshot) {
+      this.clientSnapshots.snapshot.add(snapshot)
+      this.clientSnapshotsVault.set(snapshot.id, snapshot)
+      this.clientSnapshotsLast = snapshot.id
+    }
   }
 
   update() {
@@ -275,29 +404,30 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     const pinballs = interpolatedSnapshot.state as Snapshot['state']['pinballs']
 
     restorePlayerFromSnapshot(this.engine, snapshot)
-    restoreMapActiveObjectsFromSnapshot(this.engine, snapshot.mapActiveObjects)
+    restoreMapActiveObjectsFromSnapshot(this.engine, snapshot)
     restorePinballsFromSnapshot(this.engine, pinballs)
     this.processDeferredEvents()
+    this.syncEngineByLocalEngine()
   }
 
   processDeferredEvents() {
     this.deferredEvents.forEach((event) => {
       switch (event.event) {
-        case GameEvent.INIT:
-        case GameEvent.UPDATE:
-        case GameEvent.ACTIVATE_OBJECTS:
-        case GameEvent.DEACTIVATE_OBJECTS:
-        case GameEvent.GAME_STARTED:
-        case GameEvent.PLAYER_PINBALL_REDEPLOY:
-        case GameEvent.GAME_ENDED:
-        case GameEvent.PLAYER_JOIN:
-        case GameEvent.PLAYER_LEFT:
+        case GameEventName.INIT:
+        case GameEventName.UPDATE:
+        case GameEventName.ACTIVATE_OBJECTS:
+        case GameEventName.DEACTIVATE_OBJECTS:
+        case GameEventName.GAME_STARTED:
+        case GameEventName.PLAYER_PINBALL_REDEPLOY:
+        case GameEventName.GAME_ENDED:
+        case GameEventName.PLAYER_JOIN:
+        case GameEventName.PLAYER_LEFT:
           break
-        case GameEvent.PLAYER_LOST_ROUND: {
-          this.handlePlayerLostRoundEvent(event.data)
+        case GameEventName.PLAYER_LOST_ROUND: {
+          // this.handlePlayerLostRoundEvent(event.data)
           break
         }
-        case GameEvent.PING_OBJECTS:
+        case GameEventName.PING_OBJECTS:
           this.handlePingObjectsEvent(event.data)
           break
         default:
@@ -311,28 +441,28 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   processSnapshotEvents(snapshotEvents: SnapshotEvent[]) {
     snapshotEvents.forEach((event) => {
       switch (event.event) {
-        case GameEvent.INIT:
-        case GameEvent.UPDATE:
-        case GameEvent.ACTIVATE_OBJECTS:
-        case GameEvent.DEACTIVATE_OBJECTS:
-        case GameEvent.GAME_STARTED:
-        case GameEvent.PLAYER_PINBALL_REDEPLOY:
+        case GameEventName.INIT:
+        case GameEventName.UPDATE:
+        case GameEventName.ACTIVATE_OBJECTS:
+        case GameEventName.DEACTIVATE_OBJECTS:
+        case GameEventName.GAME_STARTED:
+        case GameEventName.PLAYER_PINBALL_REDEPLOY:
           break
         // Deferred events executed on snapshots sync (ClientEngine.update)
-        case GameEvent.PLAYER_LOST_ROUND:
-        case GameEvent.PING_OBJECTS: {
+        case GameEventName.PLAYER_LOST_ROUND:
+        case GameEventName.PING_OBJECTS: {
           this.deferredEvents.push(event)
           break
         }
-        case GameEvent.GAME_ENDED: {
+        case GameEventName.GAME_ENDED: {
           this.handleGameEndedEvent(event.data)
           break
         }
-        case GameEvent.PLAYER_JOIN: {
+        case GameEventName.PLAYER_JOIN: {
           this.handlePlayerJoinEvent(event.data)
           break
         }
-        case GameEvent.PLAYER_LEFT: {
+        case GameEventName.PLAYER_LEFT: {
           this.handlePlayerLeftEvent(event.data)
           break
         }
@@ -391,24 +521,30 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       // Load map for local client
       if (!this.engine.game.world.map) {
         this.engine.game.loadMap(GAME_MAPS[schemaPlayer.map.map])
+        this.localEngine.game.loadMap(GAME_MAPS[schemaPlayer.map.map])
       }
 
-      const player = this.engine.game.world.addPlayer(schemaPlayer.id)
-      player.currentScore = schemaPlayer.currentScore
-      player.highScore = schemaPlayer.highScore
-      player.score = schemaPlayer.score
-      player.setServerControlled(true)
-      this.engine.game.setMe(player)
+      this.addPlayerToEngine(this.engine, schemaPlayer)
+      this.addPlayerToEngine(this.localEngine, schemaPlayer)
+    })
+  }
 
-      schemaPlayer.map.pinballs.forEach((schemaPinball) => {
-        const pinball = this.engine.game.world.addPinballForPlayer(
-          schemaPinball.id,
-          schemaPinball.playerId
-        )
+  addPlayerToEngine(engine: Engine, schemaPlayer: SchemaPlayer) {
+    const player = engine.game.world.addPlayer(schemaPlayer.id)
+    player.currentScore = schemaPlayer.currentScore
+    player.highScore = schemaPlayer.highScore
+    player.score = schemaPlayer.score
+    player.setServerControlled(this.userId !== schemaPlayer.id)
+    engine.game.setMe(player)
 
-        Matter.Body.setPosition(pinball.body, schemaPinball.position)
-        Matter.Body.setVelocity(pinball.body, schemaPinball.velocity)
-      })
+    schemaPlayer.map.pinballs.forEach((schemaPinball) => {
+      const pinball = engine.game.world.addPinballForPlayer(
+        schemaPinball.id,
+        schemaPinball.playerId
+      )
+
+      Matter.Body.setPosition(pinball.body, schemaPinball.position)
+      Matter.Body.setVelocity(pinball.body, schemaPinball.velocity)
     })
   }
 
@@ -444,6 +580,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     if (!player) return
 
     this.engine.game.world.loseRoundForPlayer(player)
+    this.localEngine.game.world.loseRoundForPlayer(player)
   }
 
   handlePressedKeys() {
@@ -494,11 +631,65 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   }
 
   handleActivateObjects(labels: string[]) {
-    this.room?.send(GameEvent.ACTIVATE_OBJECTS, labels)
+    this.room?.send(GameEventName.ACTIVATE_OBJECTS, labels)
+    this.handleActivateObjectsInLocalEngine(labels)
+  }
+
+  handleActivateObjectsInLocalEngine(labels: string[]) {
+    if (!this.userId) return
+
+    labels.forEach((label) => {
+      this.engine.game.world.map?.activePaddles.add(label)
+      this.localEngine.game.world.map?.activePaddles.add(label)
+    })
+
+    const eventData: ActivateObjectsEventData = {
+      name: GameEventName.ACTIVATE_OBJECTS,
+      frame: this.localEngine.frame,
+      time: this.localEngine.frameTimestamp,
+      labels,
+      playerId: this.userId,
+    }
+    const clientSnapshot = this.clientSnapshotsVault.get(
+      this.clientSnapshotsLast
+    )
+    if (!clientSnapshot) return
+    clientSnapshot.events.push({
+      event: GameEventName.ACTIVATE_OBJECTS,
+      data: JSON.stringify(eventData),
+    })
+    this.clientSnapshotsVault.set(clientSnapshot.id, clientSnapshot)
   }
 
   handleDeactivateObjects(labels: string[]) {
-    this.room?.send(GameEvent.DEACTIVATE_OBJECTS, labels)
+    this.room?.send(GameEventName.DEACTIVATE_OBJECTS, labels)
+    this.handleDeactivateObjectsInLocalEngine(labels)
+  }
+
+  handleDeactivateObjectsInLocalEngine(labels: string[]) {
+    if (!this.userId) return
+
+    labels.forEach((label) => {
+      this.engine.game.world.map?.activePaddles.delete(label)
+      this.localEngine.game.world.map?.activePaddles.delete(label)
+    })
+
+    const eventData: DeactivateObjectsEventData = {
+      name: GameEventName.DEACTIVATE_OBJECTS,
+      frame: this.localEngine.frame,
+      time: this.localEngine.frameTimestamp,
+      labels,
+      playerId: this.userId,
+    }
+    const clientSnapshot = this.clientSnapshotsVault.get(
+      this.clientSnapshotsLast
+    )
+    if (!clientSnapshot) return
+    clientSnapshot.events.push({
+      event: GameEventName.DEACTIVATE_OBJECTS,
+      data: JSON.stringify(eventData),
+    })
+    this.clientSnapshotsVault.set(clientSnapshot.id, clientSnapshot)
   }
 
   onKeyDown(e: KeyboardEvent) {
@@ -543,6 +734,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.room?.removeAllListeners()
     this.room = undefined
     this.engine.destroy()
+    this.localEngine.destroy()
     window.removeEventListener('keydown', this.onKeyDown)
     window.removeEventListener('keyup', this.onKeyUp)
     window.removeEventListener('touchstart', this.onTouchStart)

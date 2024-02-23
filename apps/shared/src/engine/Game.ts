@@ -3,22 +3,9 @@ import { World, WorldEvents } from './World'
 import { Player } from './Player'
 import { Engine } from './Engine'
 import { GameMapData } from '@pinball/shared'
-import { EventEmitter } from './EventEmitter'
+import { GameEvent } from './GameEvent'
 
-export enum GameEvents {
-  GAME_ENDED = 'game_ended',
-}
-
-export enum GameResult {
-  LOST = 0,
-  WON = 1,
-}
-
-type GameEmitterEvents = {
-  [GameEvents.GAME_ENDED]: () => void
-}
-
-export class Game extends EventEmitter<GameEmitterEvents> {
+export class Game {
   /** Game duration in ms */
   public static DURATION = 1000 * 60 * 1 // 1 minute
 
@@ -27,14 +14,15 @@ export class Game extends EventEmitter<GameEmitterEvents> {
   hasStarted: boolean
   hasEnded: boolean
   timeStarted: number | null
+  events: GameEvent[]
 
   constructor({ matterEngine }: { matterEngine: Matter.Engine }) {
-    super()
     this.world = new World({ matterEngine, game: this })
     this.me = null
     this.hasStarted = false
     this.hasEnded = false
     this.timeStarted = null
+    this.events = []
 
     this.world.addEventListener(
       WorldEvents.BUMPER_HIT,

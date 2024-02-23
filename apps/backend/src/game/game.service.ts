@@ -22,6 +22,8 @@ export class GameService implements OnApplicationShutdown {
         server: httpServer,
       }),
     })
+
+    this.server.simulateLatency(2000)
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,7 +1,7 @@
-import { Engine } from '../engine'
+import { Engine, GameEventName } from '../engine'
 import Matter from 'matter-js'
 import { Types } from '@geckos.io/snapshot-interpolation'
-import { GameEvent, GameMapName } from '../types'
+import { GameMapName } from '../types'
 
 export type SnapshotPinball = {
   id: string
@@ -13,7 +13,7 @@ export type SnapshotPinball = {
 }
 
 export type SnapshotEvent = {
-  event: GameEvent
+  event: GameEventName
   data?: string
 }
 
@@ -76,16 +76,21 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
   }
 }
 
+type RestoreEngineFromSnapshotOptions = Partial<{
+  restoreNonServerControlled: boolean
+}>
+
 export const restoreEngineFromSnapshot = (
   engine: Engine,
-  snapshot: Snapshot
+  snapshot: Snapshot,
+  options?: RestoreEngineFromSnapshotOptions
 ) => {
-  engine.frame = Number(snapshot.id)
+  // engine.frame = Number(snapshot.id)
   engine.frameTimestamp = snapshot.time
 
   restorePlayerFromSnapshot(engine, snapshot)
-  restorePinballsFromSnapshot(engine, snapshot.state.pinballs)
-  restoreMapActiveObjectsFromSnapshot(engine, snapshot.mapActiveObjects)
+  restorePinballsFromSnapshot(engine, snapshot.state.pinballs, options)
+  restoreMapActiveObjectsFromSnapshot(engine, snapshot)
 }
 
 export const restorePlayerFromSnapshot = (
@@ -106,10 +111,14 @@ export const restorePlayerFromSnapshot = (
 
 export const restoreMapActiveObjectsFromSnapshot = (
   engine: Engine,
-  mapActiveObjects: Snapshot['mapActiveObjects']
+  snapshot: Snapshot
 ) => {
+  const { mapActiveObjects, playerId } = snapshot
+  const player = engine.game.world.players.get(playerId)
   const map = engine.game.world.map
-  if (!map) return engine
+
+  if (!map || !player) return engine
+  if (!player.isServerControlled) return
 
   map.activePaddles = new Set(mapActiveObjects)
 
@@ -118,12 +127,21 @@ export const restoreMapActiveObjectsFromSnapshot = (
 
 export const restorePinballsFromSnapshot = (
   engine: Engine,
-  pinballs: Snapshot['state']['pinballs']
+  pinballs: Snapshot['state']['pinballs'],
+  options?: RestoreEngineFromSnapshotOptions
 ) => {
   pinballs.forEach((snapshotPinball) => {
     const enginePinball = engine.game.world.pinballs.get(snapshotPinball.id)
+    const enginePlayer = engine.game.world.players.get(snapshotPinball.playerId)
 
-    if (!enginePinball) {
+    if (!enginePinball || !enginePlayer) {
+      return
+    }
+
+    if (
+      !enginePlayer.isServerControlled &&
+      !options?.restoreNonServerControlled
+    ) {
       return
     }
 
@@ -136,4 +154,28 @@ export const restorePinballsFromSnapshot = (
       Matter.Vector.create(snapshotPinball.velocityX, snapshotPinball.velocityY)
     )
   })
+}
+
+export const areSnapshotsClose = (snapshotA: Snapshot, snapshotB: Snapshot) => {
+  let result = true
+
+  for (const pinballA of snapshotA.state.pinballs) {
+    const pinballB = snapshotB.state.pinballs.find((e) => e.id === pinballA.id)
+    if (!pinballB) return
+
+    const pinballAPosition = { x: pinballA.positionX, y: pinballA.positionY }
+    const pinballBPosition = { x: pinballB.positionX, y: pinballB.positionY }
+    const error = Math.abs(
+      Matter.Vector.magnitude(
+        Matter.Vector.sub(pinballAPosition, pinballBPosition)
+      )
+    )
+
+    if (error > 1) {
+      result = false
+      break
+    }
+  }
+
+  return result
 }

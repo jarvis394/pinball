@@ -1,4 +1,4 @@
-import { Pinball } from '@pinball/shared'
+import { Pinball, Snapshot, SnapshotPinball } from '@pinball/shared'
 import { ClientEngine } from '../../../models/ClientEngine'
 import * as PIXI from 'pixi.js'
 
@@ -14,40 +14,47 @@ export class PinballDebug extends PIXI.Container {
 
   init() {}
 
-  addPinball(enginePinball: Pinball) {
+  addPinball(snapshotPinball: SnapshotPinball, enginePinball: Pinball) {
     const pixiPinball = new PIXI.Graphics()
       .lineStyle(4, 'ff0000', 0.5)
       .drawCircle(0, 0, enginePinball.data.radius)
     pixiPinball.zIndex = 100
-    pixiPinball.name = enginePinball.id
-    this.pinballs.set(enginePinball.id, pixiPinball)
+    pixiPinball.name = snapshotPinball.id
+    this.pinballs.set(snapshotPinball.id, pixiPinball)
     this.addChild(pixiPinball)
 
     return pixiPinball
   }
 
   update() {
-    this.clientEngine.engine.game.world.pinballs.forEach((enginePinball) => {
-      let pixiPinball = this.pinballs.get(enginePinball.id)
+    const snapshot = this.clientEngine.snapshots.vault.get() as
+      | Snapshot
+      | undefined
+    if (!snapshot) return
 
-      if (!pixiPinball) {
-        pixiPinball = this.addPinball(enginePinball)
+    snapshot.state.pinballs.forEach((snapshotPinball) => {
+      const enginePinball = this.clientEngine.engine.game.world.pinballs.get(
+        snapshotPinball.id
+      )
+      let pixiPinball = this.pinballs.get(snapshotPinball.id)
+
+      if (!pixiPinball && enginePinball) {
+        pixiPinball = this.addPinball(snapshotPinball, enginePinball)
       }
 
-      pixiPinball.position.set(
-        enginePinball.body.position.x,
-        enginePinball.body.position.y
+      pixiPinball?.position.set(
+        snapshotPinball.positionX,
+        snapshotPinball.positionY
       )
     })
 
-    this.pinballs.forEach((_, id) => {
-      if (!this.clientEngine.engine.game.world.pinballs.has(id)) {
-        const childIndex = this.children.findIndex((e) => e.name === id)
-        if (childIndex < 0) return
+    // Remove deleted pinballs
+    this.children.forEach((pinball, i) => {
+      if (!pinball.name) return
+      if (snapshot.state.pinballs.some((e) => e.id === pinball.name)) return
 
-        this.pinballs.delete(id)
-        this.removeChildAt(childIndex)
-      }
+      this.pinballs.delete(pinball.name)
+      this.removeChildAt(i)
     })
   }
 }

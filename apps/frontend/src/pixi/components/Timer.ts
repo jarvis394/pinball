@@ -1,5 +1,6 @@
 import * as PIXI from 'pixi.js'
 import { Engine, Game, lerp } from '@pinball/shared'
+import { PIXI_CANVAS_CONTAINER_ID } from '../../pages/Game'
 
 class Timer extends PIXI.Graphics {
   public static FONT_SIZE = 20
@@ -46,6 +47,16 @@ class Timer extends PIXI.Graphics {
   }
 
   getPosition() {
+    const canvasContainer = document.getElementById(PIXI_CANVAS_CONTAINER_ID)
+
+    if (!canvasContainer) {
+      throw new Error(
+        'Cannot render Timer component without PIXI canvas container'
+      )
+    }
+
+    const { width: screenWidth } = canvasContainer.getBoundingClientRect()
+
     if (!this.engine.game.world.map) {
       throw new Error('Cannot render Timer component without loaded map')
     }
@@ -55,7 +66,7 @@ class Timer extends PIXI.Graphics {
     }
 
     return {
-      x: 20 + Timer.PADDING_HORIZONTAL,
+      x: screenWidth - this.text.width - 20 - Timer.PADDING_HORIZONTAL,
       y: 16 + Timer.PADDING_VERTICAL,
     }
   }

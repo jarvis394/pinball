@@ -2,7 +2,7 @@ import { Room, Client as ColyseusClient } from '@colyseus/core'
 import {
   GameRoomState,
   Engine,
-  GameEvent,
+  GameEventName,
   generateSnapshot,
   GameMapName,
   SchemaEvent,
@@ -45,7 +45,8 @@ export class GameRoom extends Room<GameRoomState> {
     this.dbPlayersData = {}
     this.mapName = GameMapName.SINGLEPLAYER
     this.gameController = new GameController(this.mapName)
-    this.setPatchRate(Engine.MIN_DELTA)
+    // this.setPatchRate(Engine.MIN_DELTA)
+    this.setPatchRate(1000 / 60)
   }
 
   override onCreate() {
@@ -54,11 +55,11 @@ export class GameRoom extends Room<GameRoomState> {
     this.setState(new GameRoomState(this.mapName))
 
     this.onMessage(
-      GameEvent.ACTIVATE_OBJECTS,
+      GameEventName.ACTIVATE_OBJECTS,
       this.handleActivateObjects.bind(this)
     )
     this.onMessage(
-      GameEvent.DEACTIVATE_OBJECTS,
+      GameEventName.DEACTIVATE_OBJECTS,
       this.handleDeactivateObjects.bind(this)
     )
   }
@@ -69,6 +70,10 @@ export class GameRoom extends Room<GameRoomState> {
   ) {
     if (!options?.userId) {
       return client.leave()
+    }
+
+    if (this.metadata.singleplayer) {
+      this.maxClients = 1
     }
 
     this.allowReconnection(client, 'manual')
@@ -120,12 +125,14 @@ export class GameRoom extends Room<GameRoomState> {
     this.dbPlayersData[gamePlayer.id] = dbUser
 
     const initData: InitEventData = {
+      name: GameEventName.INIT,
       players: this.dbPlayersData,
     }
 
-    client.send(GameEvent.INIT, initData)
+    client.send(GameEventName.INIT, initData)
 
     const eventData: PlayerJoinEventData = {
+      name: GameEventName.PLAYER_JOIN,
       playerId: gamePlayer.id,
       frame: this.state.frame,
       time: this.state.time,
@@ -133,16 +140,16 @@ export class GameRoom extends Room<GameRoomState> {
     }
 
     this.state.events.push(
-      new SchemaEvent(GameEvent.PLAYER_JOIN, JSON.stringify(eventData))
+      new SchemaEvent(GameEventName.PLAYER_JOIN, JSON.stringify(eventData))
     )
 
-    this.broadcast(GameEvent.PLAYER_JOIN, eventData)
+    this.broadcast(GameEventName.PLAYER_JOIN, eventData)
 
     if (this.shouldStartGame()) {
       this.clock.start()
       this.setSimulationInterval(this.update.bind(this), Engine.MIN_DELTA)
       this.gameController.startGame()
-      this.broadcast(GameEvent.GAME_STARTED, initData)
+      this.broadcast(GameEventName.GAME_STARTED, initData)
     }
   }
 
@@ -153,16 +160,17 @@ export class GameRoom extends Room<GameRoomState> {
     this.state.players.delete(playerId)
 
     const eventData: PlayerLeftEventData = {
+      name: GameEventName.PLAYER_LEFT,
       playerId,
       frame: this.state.frame,
       time: this.state.time,
     }
 
     this.state.events.push(
-      new SchemaEvent(GameEvent.PLAYER_LEFT, JSON.stringify(eventData))
+      new SchemaEvent(GameEventName.PLAYER_LEFT, JSON.stringify(eventData))
     )
 
-    this.broadcast(GameEvent.PLAYER_LEFT, eventData)
+    this.broadcast(GameEventName.PLAYER_LEFT, eventData)
   }
 
   override onDispose() {
@@ -178,6 +186,8 @@ export class GameRoom extends Room<GameRoomState> {
   }
 
   update(delta: number) {
+    this.state.events = []
+
     if (!this.shouldStartGame()) {
       return
     }
@@ -191,15 +201,13 @@ export class GameRoom extends Room<GameRoomState> {
     snapshots.forEach((snapshot) => {
       this.gameController.syncRoomStateBySnapshot(this.state, snapshot)
     })
-
-    this.broadcastPatch()
-    this.state.events = []
   }
 
   async handleGameEnd() {
     if (this.gameController.players.size === 0) return
 
     const data: GameResultsEventData = {
+      name: GameEventName.GAME_ENDED,
       eloChange: {},
       placements: [],
     }
@@ -270,7 +278,7 @@ export class GameRoom extends Room<GameRoomState> {
     await prismaClient.$transaction(transactions)
 
     this.state.events.push(
-      new SchemaEvent(GameEvent.GAME_ENDED, JSON.stringify(data))
+      new SchemaEvent(GameEventName.GAME_ENDED, JSON.stringify(data))
     )
 
     this.gameController.endGame()
@@ -284,6 +292,7 @@ export class GameRoom extends Room<GameRoomState> {
     fieldObject: GameMapFieldObject
   }) {
     const eventData: PingObjectsEventData = {
+      name: GameEventName.PING_OBJECTS,
       playerId,
       label: fieldObject.label,
       frame: this.state.frame,
@@ -291,7 +300,7 @@ export class GameRoom extends Room<GameRoomState> {
     }
 
     this.state.events.push(
-      new SchemaEvent(GameEvent.PING_OBJECTS, JSON.stringify(eventData))
+      new SchemaEvent(GameEventName.PING_OBJECTS, JSON.stringify(eventData))
     )
   }
 
@@ -303,6 +312,7 @@ export class GameRoom extends Room<GameRoomState> {
     pinballId: string
   }) {
     const eventData: PlayerPinballRedeployEventData = {
+      name: GameEventName.PLAYER_PINBALL_REDEPLOY,
       playerId,
       pinballId,
       frame: this.state.frame,
@@ -311,7 +321,7 @@ export class GameRoom extends Room<GameRoomState> {
 
     this.state.events.push(
       new SchemaEvent(
-        GameEvent.PLAYER_PINBALL_REDEPLOY,
+        GameEventName.PLAYER_PINBALL_REDEPLOY,
         JSON.stringify(eventData)
       )
     )
@@ -319,13 +329,17 @@ export class GameRoom extends Room<GameRoomState> {
 
   handlePlayerLostRound(playerId: string) {
     const eventData: PlayerLostRoundEventData = {
+      name: GameEventName.PLAYER_LOST_ROUND,
       playerId,
       frame: this.state.frame,
       time: this.state.time,
     }
 
     this.state.events.push(
-      new SchemaEvent(GameEvent.PLAYER_LOST_ROUND, JSON.stringify(eventData))
+      new SchemaEvent(
+        GameEventName.PLAYER_LOST_ROUND,
+        JSON.stringify(eventData)
+      )
     )
   }
 
@@ -335,6 +349,7 @@ export class GameRoom extends Room<GameRoomState> {
     this.gameController.handleActivateObjects(client, labels)
 
     const eventData: ActivateObjectsEventData = {
+      name: GameEventName.ACTIVATE_OBJECTS,
       playerId: client.userData?.userId,
       labels,
       frame: this.state.frame,
@@ -342,7 +357,7 @@ export class GameRoom extends Room<GameRoomState> {
     }
 
     this.state.events.push(
-      new SchemaEvent(GameEvent.ACTIVATE_OBJECTS, JSON.stringify(eventData))
+      new SchemaEvent(GameEventName.ACTIVATE_OBJECTS, JSON.stringify(eventData))
     )
   }
 
@@ -352,6 +367,7 @@ export class GameRoom extends Room<GameRoomState> {
     this.gameController.handleDeactivateObjects(client, labels)
 
     const eventData: DeactivateObjectsEventData = {
+      name: GameEventName.DEACTIVATE_OBJECTS,
       playerId: client.userData.userId,
       labels,
       frame: this.state.frame,
@@ -359,7 +375,10 @@ export class GameRoom extends Room<GameRoomState> {
     }
 
     this.state.events.push(
-      new SchemaEvent(GameEvent.DEACTIVATE_OBJECTS, JSON.stringify(eventData))
+      new SchemaEvent(
+        GameEventName.DEACTIVATE_OBJECTS,
+        JSON.stringify(eventData)
+      )
     )
   }
 }

@@ -1,5 +1,5 @@
 import { MapSchema, Schema, type } from '@colyseus/schema'
-import { GameEvent } from '../types/GameEvents'
+import { GameEventName } from '../engine/GameEvent'
 import { GameMapName } from '../types'
 
 export class SchemaVector extends Schema {
@@ -48,10 +48,10 @@ export class SchemaPlayer extends Schema {
 }
 
 export class SchemaEvent extends Schema {
-  @type('string') event: GameEvent
+  @type('string') event: GameEventName
   @type('string') data?: string
 
-  constructor(event: GameEvent, data?: string) {
+  constructor(event: GameEventName, data?: string) {
     super()
     this.event = event
     this.data = data

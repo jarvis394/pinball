@@ -17,12 +17,12 @@ class Viewport {
   viewportScale: number
   matterRender?: Matter.Render
   bounds: Matter.Bounds
+  screenWidth: number
+  screenHeight: number
+  worldWidth: number
+  worldHeight: number
 
   private resizeObserver: ResizeObserver
-  private screenWidth: number
-  private screenHeight: number
-  private worldWidth: number
-  private worldHeight: number
 
   constructor(app: Application, engine: Engine) {
     this.app = app
