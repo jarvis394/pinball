@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { matchMaker } from 'colyseus'
-import { ClientData } from '../game/rooms/game'
 import { MatchmakingGetRoomReq } from '@pinball/shared'
 
 // TODO: move to @pinball/shared and update codebase
@@ -19,7 +18,7 @@ export class MatchmakingService {
 
   async queueRoom(userId: number, data: MatchmakingGetRoomReq) {
     try {
-      const options: ClientData = {
+      const options = {
         userId: userId.toString(),
       }
       const reservation = await matchMaker.joinOrCreate(GAME_ROOM_NAME, options)

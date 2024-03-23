@@ -22,8 +22,7 @@ import {
   exhaustivnessCheck,
 } from '@pinball/shared'
 import GameController from '../../controllers/GameController'
-import { User } from '@prisma/client'
-import { prismaClient } from '../../game.service'
+import { User, PrismaClient } from '@prisma/client'
 
 export interface ClientData {
   userId?: string
@@ -36,6 +35,7 @@ export class GameRoom extends Room<GameRoomState> {
   public static GAME_ELO_CHANGE = 10
 
   override maxClients = 2
+  prismaClient: PrismaClient
   gameController: GameController
   mapName: GameMapName
   dbPlayersData: Record<string, User>
@@ -43,10 +43,10 @@ export class GameRoom extends Room<GameRoomState> {
   constructor() {
     super()
     this.dbPlayersData = {}
+    this.prismaClient = new PrismaClient()
     this.mapName = GameMapName.SINGLEPLAYER
     this.gameController = new GameController(this.mapName)
-    // this.setPatchRate(Engine.MIN_DELTA)
-    this.setPatchRate(1000 / 60)
+    this.setPatchRate(Engine.MIN_DELTA)
   }
 
   override onCreate() {
@@ -110,7 +110,7 @@ export class GameRoom extends Room<GameRoomState> {
       userId: gamePlayer.id,
     }
 
-    const dbUser = await prismaClient.user.findUnique({
+    const dbUser = await this.prismaClient.user.findUnique({
       where: {
         id: Number(gamePlayer.id),
       },
@@ -264,7 +264,7 @@ export class GameRoom extends Room<GameRoomState> {
       }
 
       transactions.push(
-        prismaClient.user.update({
+        this.prismaClient.user.update({
           where: {
             id: Number(placement.playerId),
           },
@@ -275,7 +275,7 @@ export class GameRoom extends Room<GameRoomState> {
       )
     })
 
-    await prismaClient.$transaction(transactions)
+    await this.prismaClient.$transaction(transactions)
 
     this.state.events.push(
       new SchemaEvent(GameEventName.GAME_ENDED, JSON.stringify(data))

@@ -96,8 +96,8 @@ class Viewport {
         showAngleIndicator: true,
         showVelocity: true,
         pixelRatio: window.devicePixelRatio || 1,
-        showPerformance: true,
-        showStats: true,
+        // showPerformance: true,
+        // showStats: true,
         hasBounds: true,
       },
     })

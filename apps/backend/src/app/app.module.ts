@@ -6,7 +6,6 @@ import { ConfigModule } from '../config/config.module'
 import { AuthModule } from '../auth/auth.module'
 import { UserModule } from '../user/user.module'
 import { MatchmakingModule } from '../matchmaking/matchmaking.module'
-import { GameService } from '../game/game.service'
 
 @Module({
   imports: [
@@ -18,6 +17,6 @@ import { GameService } from '../game/game.service'
     MatchmakingModule,
   ],
   controllers: [AppController],
-  providers: [AppService, GameService],
+  providers: [AppService],
 })
 export class AppModule {}

@@ -6,12 +6,7 @@ import {
   ExpressAdapter,
   NestExpressApplication,
 } from '@nestjs/platform-express'
-import { GameRoom } from './game/rooms'
 import express from 'express'
-import http from 'http'
-import { GameService } from './game/game.service'
-
-const ROOMS = [GameRoom]
 
 async function bootstrap() {
   const app = express()
@@ -23,7 +18,6 @@ async function bootstrap() {
 
   const config = nestApp.get(ConfigService)
   const backendPort = config.BACKEND_PORT
-  const multiplayerPort = config.MULTIPLAYER_PORT
   const globalPrefix = 'api'
   nestApp.setGlobalPrefix(globalPrefix)
   nestApp.enableShutdownHooks()
@@ -34,19 +28,6 @@ async function bootstrap() {
   Logger.log(
     `🚀 Application is running on: http://localhost:${backendPort}/${globalPrefix}`
   )
-
-  const httpServer = http.createServer(app)
-  const gameSvc = nestApp.get(GameService)
-  gameSvc.createServer(httpServer)
-
-  ROOMS.forEach((r) => {
-    Logger.log(`Registering room: ${r.name}`)
-    gameSvc.defineRoom(r.name, r)
-  })
-
-  gameSvc.listen(multiplayerPort).then(() => {
-    Logger.log(`Colyseus started on port ${multiplayerPort}`)
-  })
 }
 
 bootstrap()

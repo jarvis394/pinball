@@ -324,11 +324,11 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
   reconcilePinballs(serverSnapshot: Snapshot, playerSnapshot: Snapshot) {
     const presentTime = playerSnapshot.time
-    const serverTime = serverSnapshot.time
-    let currentClientSnapshot = this.clientSnapshotsVault.get(
+    let currentTime = serverSnapshot.time
+    const currentClientSnapshot = this.clientSnapshotsVault.get(
       Number(serverSnapshot.id).toString()
     ) as Snapshot | undefined
-    const frames = (presentTime - serverTime) / Engine.MIN_DELTA
+    // const frames = (presentTime - serverTime) / Engine.MIN_DELTA
 
     if (
       currentClientSnapshot &&
@@ -342,37 +342,39 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     })
     this.localEngine.frame = Number(serverSnapshot.id)
 
-    for (let i = 0; i < frames; i++) {
-      currentClientSnapshot = this.clientSnapshotsVault.get(
-        (i + Number(serverSnapshot.id)).toString()
-      ) as Snapshot | undefined
+    // for (let i = 0; i < frames; i++) {
+    while (currentTime < presentTime) {
+      // currentClientSnapshot = this.clientSnapshotsVault.get(
+      //   (i + Number(serverSnapshot.id)).toString()
+      // ) as Snapshot | undefined
 
-      currentClientSnapshot?.events.forEach((event) => {
-        switch (event.event) {
-          case GameEventName.ACTIVATE_OBJECTS:
-            console.log('activate objects', event.data)
-            this.handleActivateObjectsInLocalEngine(
-              JSON.parse(event.data || '')
-            )
-            break
-          case GameEventName.DEACTIVATE_OBJECTS:
-            console.log('deactivate objects', event.data)
-            this.handleDeactivateObjectsInLocalEngine(
-              JSON.parse(event.data || '')
-            )
-            break
-          case GameEventName.PLAYER_LOST_ROUND:
-            console.log('lose round')
-            // this.handlePlayerLostRoundEvent(JSON.parse(event.data || ''))
-            break
-        }
-      })
+      // currentClientSnapshot?.events.forEach((event) => {
+      //   switch (event.event) {
+      //     case GameEventName.ACTIVATE_OBJECTS:
+      //       console.log('activate objects', event.data)
+      //       this.handleActivateObjectsInLocalEngine(
+      //         JSON.parse(event.data || '')
+      //       )
+      //       break
+      //     case GameEventName.DEACTIVATE_OBJECTS:
+      //       console.log('deactivate objects', event.data)
+      //       this.handleDeactivateObjectsInLocalEngine(
+      //         JSON.parse(event.data || '')
+      //       )
+      //       break
+      //     case GameEventName.PLAYER_LOST_ROUND:
+      //       console.log('lose round')
+      //       // this.handlePlayerLostRoundEvent(JSON.parse(event.data || ''))
+      //       break
+      //   }
+      // })
 
       this.localEngine.update(Engine.MIN_DELTA)
-      this.clientSnapshotsVault.set(
-        this.localEngine.frame.toString(),
-        generateSnapshot(this.localEngine)
-      )
+      currentTime += Engine.MIN_DELTA
+      // this.clientSnapshotsVault.set(
+      //   this.localEngine.frame.toString(),
+      //   generateSnapshot(this.localEngine)
+      // )
     }
   }
 
