@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js'
-import { Engine, Game, lerp } from '@pinball/shared'
+import { lerp } from '@pinball/shared'
 import { PIXI_CANVAS_CONTAINER_ID } from '../../pages/Game'
+import { Engine, Game } from '@pinball/engine'
 
 class Timer extends PIXI.Graphics {
   public static FONT_SIZE = 20

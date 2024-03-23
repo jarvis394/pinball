@@ -1,31 +1,31 @@
 {
   "name": "shared",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/shared/src",
+  "sourceRoot": "libs/shared/src",
   "projectType": "library",
   "targets": {
     "build": {
       "executor": "@nx/js:swc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/apps/shared",
-        "main": "apps/shared/src/index.ts",
-        "tsConfig": "apps/shared/tsconfig.lib.json",
-        "assets": ["apps/shared/*.md"]
+        "outputPath": "dist/libs/shared",
+        "main": "libs/shared/src/index.ts",
+        "tsConfig": "libs/shared/tsconfig.lib.json",
+        "assets": ["libs/shared/*.md"]
       }
     },
     "lint": {
       "executor": "@nx/linter:eslint",
       "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": ["apps/shared/**/*.ts"]
+        "lintFilePatterns": ["libs/shared/**/*.ts"]
       }
     },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
         "commands": ["tsc -p tsconfig.json --noEmit"],
-        "cwd": "apps/shared",
+        "cwd": "libs/shared",
         "forwardAllArgs": false
       }
     }

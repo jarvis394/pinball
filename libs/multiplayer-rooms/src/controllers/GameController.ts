@@ -1,15 +1,12 @@
+import { GAME_MAPS, GameMapData, GameMapName } from '@pinball/shared'
+import { Engine, Player } from '@pinball/engine'
 import {
-  Engine,
-  GAME_MAPS,
-  GameMapData,
-  GameMapName,
-  GameRoomState,
-  Player,
   SchemaPinball,
+  GameRoomState,
   SchemaPlayer,
   Snapshot,
   generateSnapshot,
-} from '@pinball/shared'
+} from '@pinball/colyseus-schema'
 import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
 import { Client } from '../rooms/game'
 

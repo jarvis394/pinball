@@ -1,4 +1,5 @@
-import { lerp, Engine } from '@pinball/shared'
+import { lerp } from '@pinball/shared'
+import { Engine } from '@pinball/engine'
 import Matter from 'matter-js'
 import { Viewport as PixiViewport } from 'pixi-viewport'
 import { DisplayObject } from 'pixi.js'

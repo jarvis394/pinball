@@ -1,7 +1,7 @@
-import { Engine, GameEventName } from '../engine'
+import { Engine, GameEventName } from '@pinball/engine'
 import Matter from 'matter-js'
 import { Types } from '@geckos.io/snapshot-interpolation'
-import { GameMapName } from '../types'
+import { GameMapName } from '@pinball/shared'
 
 export type SnapshotPinball = {
   id: string

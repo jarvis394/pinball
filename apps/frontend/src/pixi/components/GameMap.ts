@@ -8,13 +8,11 @@ import {
   GameMapObjectBaseVertices,
   GameMapObjectType,
   GameMapParseType,
-  Engine,
-  Paddle as EnginePaddle,
-  WorldEvents,
   exhaustivnessCheck,
   lerp,
   pointsOnPath,
 } from '@pinball/shared'
+import { Engine, Paddle as EnginePaddle, WorldEvents } from '@pinball/engine'
 import Matter from 'matter-js'
 import { ClientEngine } from '../../models/ClientEngine'
 import MainLoop from 'mainloop.js'

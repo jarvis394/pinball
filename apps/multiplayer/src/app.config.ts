@@ -2,7 +2,7 @@ import config from '@colyseus/tools'
 import { monitor } from '@colyseus/monitor'
 import { playground } from '@colyseus/playground'
 import { uWebSocketsTransport } from '@colyseus/uwebsockets-transport'
-import { GameRoom } from './rooms'
+import { GameRoom } from '@pinball/multiplayer-rooms'
 import express from 'express'
 import cors from 'cors'
 

@@ -1,21 +1,13 @@
 import {
-  Engine,
-  EventEmitter,
   GAME_MAPS,
-  GameEventName,
   GameMapObjectType,
-  GameResultsEventData,
+  exhaustivnessCheck,
+} from '@pinball/shared'
+import {
   GameRoomState,
-  GameStartedEventData,
-  InitEventData,
-  PingObjectsEventData,
-  PlayerJoinEventData,
-  PlayerLeftEventData,
-  PlayerLostRoundEventData,
   Snapshot,
   SnapshotEvent,
   SnapshotPinball,
-  exhaustivnessCheck,
   generateSnapshot,
   restoreEngineFromSnapshot,
   restoreMapActiveObjectsFromSnapshot,
@@ -23,9 +15,7 @@ import {
   restorePlayerFromSnapshot,
   areSnapshotsClose,
   SchemaPlayer,
-  ActivateObjectsEventData,
-  DeactivateObjectsEventData,
-} from '@pinball/shared'
+} from '@pinball/colyseus-schema'
 import Matter from 'matter-js'
 import * as Colyseus from 'colyseus.js'
 import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
@@ -34,6 +24,20 @@ import {
   ClientEnginePlayerJson,
   VKUserData,
 } from './ClientEnginePlayer'
+import {
+  Engine,
+  EventEmitter,
+  GameEventName,
+  GameResultsEventData,
+  GameStartedEventData,
+  InitEventData,
+  PingObjectsEventData,
+  PlayerJoinEventData,
+  PlayerLeftEventData,
+  PlayerLostRoundEventData,
+  ActivateObjectsEventData,
+  DeactivateObjectsEventData,
+} from '@pinball/engine'
 
 const parseData = <T>(data?: string) => {
   if (!data) return false

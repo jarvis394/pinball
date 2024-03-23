@@ -6,7 +6,7 @@
     "dev:front": "yarn nx run frontend:serve",
     "dev:backend": "yarn nx run backend:serve",
     "dev:multiplayer": "yarn nx run multiplayer:serve",
-    "dev": "yarn nx run-many -t serve -p frontend backend multiplayer",
+    "dev": "yarn nx run-many -t serve -p frontend backend multiplayer --output-style stream",
     "build:front": "yarn nx run frontend:build",
     "build:backend": "yarn nx run backend:build",
     "build:multiplayer": "yarn nx run multiplayer:build",

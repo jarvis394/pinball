@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js'
-import { Engine } from '@pinball/shared'
+import { Engine } from '@pinball/engine'
 
 class CurrentScore extends PIXI.Graphics {
   public static FONT_SIZE = 96

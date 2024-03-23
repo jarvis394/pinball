@@ -1,6 +1,6 @@
 import { MapSchema, Schema, type } from '@colyseus/schema'
-import { GameEventName } from '../engine/GameEvent'
-import { GameMapName } from '../types'
+import { GameEventName } from '@pinball/engine'
+import { GameMapName } from '@pinball/shared'
 
 export class SchemaVector extends Schema {
   @type('float64') x: number

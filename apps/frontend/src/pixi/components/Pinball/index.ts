@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js'
-import { Pinball as EnginePinball } from '@pinball/shared'
+import { Pinball as EnginePinball } from '@pinball/engine'
 
 class Pinball extends PIXI.Graphics {
   enginePinball: EnginePinball

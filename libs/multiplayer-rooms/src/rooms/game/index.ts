@@ -1,26 +1,30 @@
 import { Room, Client as ColyseusClient } from '@colyseus/core'
 import {
+  GameMapName,
+  GameMapFieldObject,
+  exhaustivnessCheck,
+} from '@pinball/shared'
+import {
   GameRoomState,
+  generateSnapshot,
+  SchemaEvent,
+} from '@pinball/colyseus-schema'
+import {
   Engine,
   GameEventName,
-  generateSnapshot,
-  GameMapName,
-  SchemaEvent,
   ActivateObjectsEventData,
   DeactivateObjectsEventData,
   PingObjectsEventData,
   PlayerJoinEventData,
   WorldEvents,
   PlayerLeftEventData,
-  GameMapFieldObject,
   PlayerLostRoundEventData,
   PlayerPinballRedeployEventData,
   InitEventData,
   GameResultsEventData,
   Game,
   GameResult,
-  exhaustivnessCheck,
-} from '@pinball/shared'
+} from '@pinball/engine'
 import GameController from '../../controllers/GameController'
 import { User, PrismaClient } from '@prisma/client'
 

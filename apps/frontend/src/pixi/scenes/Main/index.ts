@@ -1,4 +1,4 @@
-import { Engine, WorldEvents } from '@pinball/shared'
+import { Engine, WorldEvents } from '@pinball/engine'
 import { ClientEngine, ClientEngineEvents } from '../../../models/ClientEngine'
 import Application from '../../Application'
 import PIXIObject from '../../PIXIObject'

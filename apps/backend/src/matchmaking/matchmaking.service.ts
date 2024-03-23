@@ -6,9 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service'
 import { matchMaker } from 'colyseus'
 import { MatchmakingGetRoomReq } from '@pinball/shared'
-
-// TODO: move to @pinball/shared and update codebase
-const GAME_ROOM_NAME = 'GameRoom'
+import { GameRoom } from '@pinball/multiplayer-rooms'
 
 @Injectable()
 export class MatchmakingService {
@@ -21,7 +19,7 @@ export class MatchmakingService {
       const options = {
         userId: userId.toString(),
       }
-      const reservation = await matchMaker.joinOrCreate(GAME_ROOM_NAME, options)
+      const reservation = await matchMaker.joinOrCreate(GameRoom.name, options)
       const room = matchMaker.getRoomById(reservation.room.roomId)
       room.setMetadata({ singleplayer: data.singleplayer || false })
 

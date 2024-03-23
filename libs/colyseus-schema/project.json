@@ -1,0 +1,34 @@
+{
+  "name": "colyseus-schema",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/colyseus-schema/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:swc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/colyseus-schema",
+        "main": "libs/colyseus-schema/src/index.ts",
+        "tsConfig": "libs/colyseus-schema/tsconfig.lib.json",
+        "assets": ["libs/colyseus-schema/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/colyseus-schema/**/*.ts"]
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["tsc -p tsconfig.json --noEmit"],
+        "cwd": "libs/colyseus-schema",
+        "forwardAllArgs": false
+      }
+    }
+  },
+  "tags": []
+}

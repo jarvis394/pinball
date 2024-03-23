@@ -1,4 +1,5 @@
-import { Pinball, Snapshot, SnapshotPinball } from '@pinball/shared'
+import { Pinball } from '@pinball/engine'
+import { Snapshot, SnapshotPinball } from '@pinball/colyseus-schema'
 import { ClientEngine } from '../../../models/ClientEngine'
 import * as PIXI from 'pixi.js'
 

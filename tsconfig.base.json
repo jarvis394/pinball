@@ -31,8 +31,10 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@pinball/shared": ["apps/shared/src/index.ts"],
-      "@pinball/multiplayer": ["apps/multiplayer/src/index.ts"],
+      "@pinball/colyseus-schema": ["libs/colyseus-schema/src/index.ts"],
+      "@pinball/engine": ["libs/engine/src/index.ts"],
+      "@pinball/multiplayer-rooms": ["libs/multiplayer-rooms/src/index.ts"],
+      "@pinball/shared": ["libs/shared/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
