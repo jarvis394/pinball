@@ -10,16 +10,18 @@ import { injectDeps } from './utils/injectDeps'
 import { GAME_ROOM_NAME } from '@pinball/shared'
 import * as http from 'http'
 import express from 'express'
+import { join } from 'path'
+import { path as rootPath } from 'app-root-path'
 
 async function bootstrap() {
   const expressApp = express()
   const nestApp = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,
     {
-      transport: Transport.TCP,
+      transport: Transport.GRPC,
       options: {
-        host: '0.0.0.0',
-        port: Number(process.env.MULTIPLAYER_MICROSERVICE_PORT) || 6000,
+        package: 'multiplayer',
+        protoPath: join(rootPath, 'proto/multiplayer.proto'),
       },
     }
   )

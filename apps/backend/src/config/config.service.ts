@@ -4,7 +4,6 @@ import { ConfigService as BaseConfigService } from '@nestjs/config'
 type EnvSchema = {
   BACKEND_PORT: string
   MULTIPLAYER_PORT: string
-  MULTIPLAYER_MICROSERVICE_PORT: string
   DATABASE_URL: string
   VK_APP_SECRET: string
   VK_APP_SERVICE_TOKEN: string
@@ -20,10 +19,6 @@ export class ConfigService {
 
   get MULTIPLAYER_PORT() {
     return this.configService.get('MULTIPLAYER_PORT') || 2567
-  }
-
-  get MULTIPLAYER_MICROSERVICE_PORT() {
-    return this.configService.get('MULTIPLAYER_MICROSERVICE_PORT') || 6000
   }
 
   get DATABASE_URL() {

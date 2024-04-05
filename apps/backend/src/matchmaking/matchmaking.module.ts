@@ -3,7 +3,8 @@ import { MatchmakingService } from './matchmaking.service'
 import { MatchmakingController } from './matchmaking.controller'
 import { PrismaService } from '../prisma/prisma.service'
 import { ClientProxyFactory, Transport } from '@nestjs/microservices'
-import { ConfigService } from '../config/config.service'
+import { join } from 'path'
+import { path as rootPath } from 'app-root-path'
 
 @Module({
   imports: [],
@@ -12,17 +13,17 @@ import { ConfigService } from '../config/config.service'
     MatchmakingService,
     PrismaService,
     {
-      provide: 'COLYSEUS_SERVICE',
-      useFactory: (configService: ConfigService) => {
+      provide: 'MULTIPLAYER_PACKAGE',
+      useFactory: () => {
         return ClientProxyFactory.create({
-          transport: Transport.TCP,
+          transport: Transport.GRPC,
           options: {
-            host: '0.0.0.0',
-            port: configService.MULTIPLAYER_MICROSERVICE_PORT,
+            package: 'multiplayer',
+            protoPath: join(rootPath, 'proto/multiplayer.proto'),
           },
         })
       },
-      inject: [ConfigService],
+      inject: [],
     },
   ],
   exports: [MatchmakingService],
