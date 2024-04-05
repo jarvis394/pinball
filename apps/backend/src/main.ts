@@ -10,7 +10,6 @@ import express from 'express'
 
 async function bootstrap() {
   const app = express()
-
   const nestApp = await NestFactory.create<NestExpressApplication>(
     AppModule,
     new ExpressAdapter(app)

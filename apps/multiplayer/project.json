@@ -12,7 +12,7 @@
         "target": "node",
         "compiler": "tsc",
         "outputPath": "dist/apps/multiplayer",
-        "main": "apps/multiplayer/src/index.ts",
+        "main": "apps/multiplayer/src/main.ts",
         "tsConfig": "apps/multiplayer/tsconfig.app.json",
         "webpackConfig": "apps/multiplayer/webpack.config.ts"
       },

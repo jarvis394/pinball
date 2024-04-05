@@ -27,14 +27,20 @@ import {
 } from '@pinball/engine'
 import GameController from '../../controllers/GameController'
 import { User, PrismaClient } from '@prisma/client'
+import { Injectable } from '@nestjs/common'
 
 export interface ClientData {
   userId?: string
 }
 
+export interface GameRoomMetadata {
+  singleplayer?: boolean
+}
+
 export type Client = ColyseusClient<ClientData>
 
-export class GameRoom extends Room<GameRoomState> {
+@Injectable()
+export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
   /** How much elo points should be subtracted or added */
   public static GAME_ELO_CHANGE = 10
 
@@ -68,15 +74,12 @@ export class GameRoom extends Room<GameRoomState> {
     )
   }
 
-  override async onJoin(
-    client: Client,
-    options: { userId?: string } | undefined
-  ) {
-    if (!options?.userId) {
+  override async onJoin(client: Client, options: ClientData | undefined) {
+    if (!options?.userId || typeof options.userId !== 'string') {
       return client.leave()
     }
 
-    if (this.metadata.singleplayer) {
+    if (this.metadata?.singleplayer) {
       this.maxClients = 1
     }
 
@@ -121,7 +124,7 @@ export class GameRoom extends Room<GameRoomState> {
     })
 
     // Client should always have record in DB as it
-    // should create on matchmaking seat reservation
+    // should be created on matchmaking seat reservation
     if (!dbUser) {
       return client.leave()
     }
