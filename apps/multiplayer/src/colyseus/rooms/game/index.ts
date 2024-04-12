@@ -134,6 +134,8 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
     const initData: InitEventData = {
       name: GameEventName.INIT,
       players: this.dbPlayersData,
+      frame: this.state.frame,
+      time: this.state.time,
     }
 
     client.send(GameEventName.INIT, initData)
@@ -192,8 +194,12 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
     return this.gameController.players.size >= this.maxClients
   }
 
-  update(delta: number) {
+  flushEvents() {
     this.state.events = []
+  }
+
+  update(delta: number) {
+    this.flushEvents()
 
     if (!this.shouldStartGame()) {
       return
@@ -217,6 +223,8 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       name: GameEventName.GAME_ENDED,
       eloChange: {},
       placements: [],
+      frame: this.state.frame,
+      time: this.state.time,
     }
 
     this.gameController.players.forEach((player) => {

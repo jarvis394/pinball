@@ -20,9 +20,11 @@ export enum WorldEvents {
   PLAYER_PINBALL_REDEPLOY = 'player_pinball_redeploy',
   BUMPER_HIT = 'bumper_hit',
   PLAYER_CURRENT_SCORE_CHANGE = 'player_current_score_change',
+  ACTIVATE_OBJECTS = 'activate_objects',
+  DEACTIVATE_OBJECTS = 'deactivate_objects',
 }
 
-type WorldEmitterEvents = {
+export type WorldEmitterEvents = {
   [WorldEvents.PLAYER_SPAWN]: (playerId: string) => void
   [WorldEvents.PLAYER_DESPAWN]: (playerId: string) => void
   [WorldEvents.PLAYER_LOST_ROUND]: (playerId: string) => void
@@ -39,6 +41,14 @@ type WorldEmitterEvents = {
     playerId: string
     object: GameMapObjectBumper
     fieldObject: GameMapFieldObject
+  }) => void
+  [WorldEvents.ACTIVATE_OBJECTS]: (param: {
+    playerId: string
+    labels: string[]
+  }) => void
+  [WorldEvents.DEACTIVATE_OBJECTS]: (param: {
+    playerId: string
+    labels: string[]
   }) => void
 }
 
@@ -127,7 +137,7 @@ export class World extends EventEmitter<WorldEmitterEvents> {
     if (!playerPinball) return
 
     playerPinball.reset()
-    // this.game.loseRoundForPlayer(this)
+    this.game.handlePlayerLostRound(player.id)
     this.eventEmitter.emit(WorldEvents.PLAYER_LOST_ROUND, player.id)
   }
 
@@ -147,11 +157,38 @@ export class World extends EventEmitter<WorldEmitterEvents> {
     object: GameMapObjectBumper,
     fieldObject: GameMapFieldObject
   ) {
+    this.game.handleBumperHit({
+      playerId: player.id,
+      object,
+      fieldObject,
+    })
     this.eventEmitter.emit(WorldEvents.BUMPER_HIT, {
       playerId: player.id,
       object,
       fieldObject,
     })
+  }
+
+  public handleActivateObjects(labels: string[]) {
+    this.game.handleActivateObjects(labels)
+
+    if (this.game.me) {
+      this.eventEmitter.emit(WorldEvents.ACTIVATE_OBJECTS, {
+        playerId: this.game.me.id,
+        labels,
+      })
+    }
+  }
+
+  public handleDeactivateObjects(labels: string[]) {
+    this.game.handleDeactivateObjects(labels)
+
+    if (this.game.me) {
+      this.eventEmitter.emit(WorldEvents.DEACTIVATE_OBJECTS, {
+        playerId: this.game.me.id,
+        labels,
+      })
+    }
   }
 
   public loadMap(data: GameMapData) {
@@ -170,6 +207,7 @@ export class World extends EventEmitter<WorldEmitterEvents> {
     })
 
     this.players.set(player.id, player)
+    this.game.handlePlayerSpawn(player.id)
     this.eventEmitter.emit(WorldEvents.PLAYER_SPAWN, player.id)
     return player
   }
@@ -191,8 +229,9 @@ export class World extends EventEmitter<WorldEmitterEvents> {
 
     if (!player) return false
 
+    this.game.handlePlayerLeave(player.id)
     this.eventEmitter.emit(WorldEvents.PLAYER_DESPAWN, player.id)
-    return this.players.delete(id)
+    return this.players.delete(player.id)
   }
 
   public update() {

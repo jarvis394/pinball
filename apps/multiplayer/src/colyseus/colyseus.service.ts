@@ -22,6 +22,8 @@ export class ColyseusService implements OnApplicationShutdown {
       presence: new RedisPresence(),
       greet: false,
     })
+
+    this.server.simulateLatency(200)
   }
 
   defineRoom(name: string, room: Type<Room>) {

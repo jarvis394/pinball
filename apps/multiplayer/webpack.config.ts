@@ -5,7 +5,6 @@ module.exports = composePlugins(
   withNx({
     target: 'node',
     watch: true,
-    progress: true,
   }),
   (config) => {
     // Update the webpack config as needed here.

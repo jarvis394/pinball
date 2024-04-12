@@ -20,6 +20,7 @@ import { path as rootPath } from 'app-root-path'
           options: {
             package: 'multiplayer',
             protoPath: join(rootPath, 'proto/multiplayer.proto'),
+            gracefulShutdown: true,
           },
         })
       },

@@ -1,42 +1,113 @@
-import Matter from 'matter-js'
-import { World, WorldEvents } from './World'
+import { World, WorldEmitterEvents, WorldEvents } from './World'
 import { Player } from './Player'
 import { Engine } from './Engine'
 import { GameMapData } from '@pinball/shared'
-import { GameEvent } from './GameEvent'
+import { GameEvent, GameEventName } from './GameEvent'
 
 export class Game {
   /** Game duration in ms */
   public static DURATION = 1000 * 60 * 1 // 1 minute
 
   world: World
+  engine: Engine
   me: Player | null
   hasStarted: boolean
   hasEnded: boolean
   timeStarted: number | null
   events: GameEvent[]
 
-  constructor({ matterEngine }: { matterEngine: Matter.Engine }) {
-    this.world = new World({ matterEngine, game: this })
+  constructor({ engine }: { engine: Engine }) {
+    this.world = new World({ matterEngine: engine.matterEngine, game: this })
+    this.engine = engine
     this.me = null
     this.hasStarted = false
     this.hasEnded = false
     this.timeStarted = null
     this.events = []
+  }
 
-    this.world.addEventListener(
-      WorldEvents.BUMPER_HIT,
-      ({ object, playerId }) => {
-        const player = this.world.players.get(playerId)
-        player && this.addPoints(player, object.points)
-      }
+  public handleBumperHit: WorldEmitterEvents[WorldEvents.BUMPER_HIT] = ({
+    object,
+    fieldObject,
+    playerId,
+  }) => {
+    const player = this.world.players.get(playerId)
+    player && this.addPoints(player, object.points)
+
+    this.events.push(
+      new GameEvent(GameEventName.PING_OBJECTS, {
+        name: GameEventName.PING_OBJECTS,
+        frame: this.engine.frame,
+        time: this.engine.frameTimestamp,
+        label: fieldObject.label,
+        playerId,
+      })
     )
-    this.world.addEventListener(
-      WorldEvents.PLAYER_LOST_ROUND,
-      (playerId: string) => {
-        const player = this.world.players.get(playerId)
-        player && this.resetCurrentScore(player)
-      }
+  }
+
+  public handlePlayerLostRound = (playerId: string) => {
+    const player = this.world.players.get(playerId)
+    player && this.resetCurrentScore(player)
+
+    this.events.push(
+      new GameEvent(GameEventName.PLAYER_LOST_ROUND, {
+        name: GameEventName.PLAYER_LOST_ROUND,
+        frame: this.engine.frame,
+        time: this.engine.frameTimestamp,
+        playerId,
+      })
+    )
+  }
+
+  public handleActivateObjects = (labels: string[]) => {
+    if (!this.me) return
+
+    this.events.push(
+      new GameEvent(GameEventName.ACTIVATE_OBJECTS, {
+        name: GameEventName.ACTIVATE_OBJECTS,
+        frame: this.engine.frame,
+        time: this.engine.frameTimestamp,
+        labels,
+        playerId: this.me.id,
+      })
+    )
+  }
+
+  public handleDeactivateObjects = (labels: string[]) => {
+    if (!this.me) return
+
+    this.events.push(
+      new GameEvent(GameEventName.DEACTIVATE_OBJECTS, {
+        name: GameEventName.DEACTIVATE_OBJECTS,
+        frame: this.engine.frame,
+        time: this.engine.frameTimestamp,
+        labels,
+        playerId: this.me.id,
+      })
+    )
+  }
+
+  public handlePlayerSpawn(id: string) {
+    this.events.push(
+      new GameEvent(GameEventName.PLAYER_JOIN, {
+        name: GameEventName.PLAYER_JOIN,
+        frame: this.engine.frame,
+        time: this.engine.frameTimestamp,
+        playerId: id,
+        // TODO: fixme, should probably be a real value
+        elo: 0,
+      })
+    )
+  }
+
+  public handlePlayerLeave(id: string) {
+    this.events.push(
+      new GameEvent(GameEventName.PLAYER_LEFT, {
+        name: GameEventName.PLAYER_LEFT,
+        frame: this.engine.frame,
+        time: this.engine.frameTimestamp,
+        playerId: id,
+      })
     )
   }
 
@@ -81,7 +152,12 @@ export class Game {
     this.hasEnded = true
   }
 
+  public flushEvents() {
+    this.events = []
+  }
+
   public update() {
+    this.flushEvents()
     if (!this.hasStarted || this.hasEnded) return
 
     if (this.shouldEndGame()) {

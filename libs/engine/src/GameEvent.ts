@@ -14,18 +14,32 @@ export enum GameEventName {
   GAME_STARTED = '10',
 }
 
+export type GameEventsMap = {
+  [GameEventName.INIT]: InitEventData
+  [GameEventName.UPDATE]: never
+  [GameEventName.PLAYER_JOIN]: PlayerJoinEventData
+  [GameEventName.PLAYER_LEFT]: PlayerLeftEventData
+  [GameEventName.ACTIVATE_OBJECTS]: ActivateObjectsEventData
+  [GameEventName.DEACTIVATE_OBJECTS]: DeactivateObjectsEventData
+  [GameEventName.PING_OBJECTS]: PingObjectsEventData
+  [GameEventName.PLAYER_LOST_ROUND]: PlayerLostRoundEventData
+  [GameEventName.PLAYER_PINBALL_REDEPLOY]: PlayerPinballRedeployEventData
+  [GameEventName.GAME_ENDED]: GameResultsEventData
+  [GameEventName.GAME_STARTED]: GameStartedEventData
+}
+
 export type GameEventData = {
   time: number
   frame: number
   name: GameEventName
 }
 
-export type InitEventData = {
+export type InitEventData = GameEventData & {
   name: GameEventName.INIT
   players: Record<string, User>
 }
 
-export type GameStartedEventData = {
+export type GameStartedEventData = GameEventData & {
   name: GameEventName.GAME_STARTED
   players: Record<string, User>
 }
@@ -47,7 +61,7 @@ export type GameResultsEloChange = {
   elo: number
 }
 
-export type GameResultsEventData = {
+export type GameResultsEventData = GameEventData & {
   name: GameEventName.GAME_ENDED
   placements: GameResultsPlacement[]
   eloChange: Record<string, GameResultsEloChange>
@@ -92,11 +106,11 @@ export type PlayerPinballRedeployEventData = GameEventData & {
   pinballId: string
 }
 
-export class GameEvent {
-  name: GameEventName
-  data: GameEventData
+export class GameEvent<T extends keyof GameEventsMap = GameEventName> {
+  name: T
+  data: GameEventsMap[T]
 
-  constructor(name: GameEventName, data: GameEventData) {
+  constructor(name: T, data: GameEventsMap[T]) {
     this.name = name
     this.data = data
   }

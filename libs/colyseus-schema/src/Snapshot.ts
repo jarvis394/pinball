@@ -36,6 +36,7 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
   const player = engine.game.me
   const pinballs: SnapshotPinball[] = []
   const mapActiveObjects: string[] = []
+  const events: SnapshotEvent[] = []
 
   if (!engine.game.world.map || !engine.game.world.mapName) {
     throw new Error('generateSnapshot: No map loaded')
@@ -60,6 +61,13 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
     mapActiveObjects.push(label)
   })
 
+  engine.game.events.forEach((event) => {
+    events.push({
+      event: event.name,
+      data: JSON.stringify(event.data),
+    })
+  })
+
   return {
     id: engine.frame.toString(),
     time: Date.now(),
@@ -69,7 +77,7 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
     playerHighScore: player.highScore,
     playerCurrentScore: player.currentScore,
     mapActiveObjects,
-    events: [],
+    events,
     state: {
       pinballs,
     },
@@ -85,8 +93,12 @@ export const restoreEngineFromSnapshot = (
   snapshot: Snapshot,
   options?: RestoreEngineFromSnapshotOptions
 ) => {
-  // engine.frame = Number(snapshot.id)
+  engine.frame = Number(snapshot.id)
   engine.frameTimestamp = snapshot.time
+  engine.game.events = snapshot.events.map((event) => ({
+    data: JSON.parse(event.data || ''),
+    name: event.event,
+  }))
 
   restorePlayerFromSnapshot(engine, snapshot)
   restorePinballsFromSnapshot(engine, snapshot.state.pinballs, options)

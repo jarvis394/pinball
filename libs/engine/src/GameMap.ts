@@ -285,14 +285,24 @@ export class GameMap {
     return body
   }
 
+  public handleActivatePaddle(paddle: Paddle) {
+    paddle.activate()
+    this.world.handleActivateObjects([paddle.fieldObject.label])
+  }
+
+  public handleDeactivatePaddle(paddle: Paddle) {
+    paddle.deactivate()
+    this.world.handleDeactivateObjects([paddle.fieldObject.label])
+  }
+
   public update() {
     this.paddles.forEach((paddle) => {
       const shouldBeActive = this.activePaddles.has(paddle.fieldObject.label)
 
       if (shouldBeActive && !paddle.isActive) {
-        paddle.activate()
+        this.handleActivatePaddle(paddle)
       } else if (!shouldBeActive && paddle.isActive) {
-        paddle.deactivate()
+        this.handleDeactivatePaddle(paddle)
       }
 
       paddle.update()

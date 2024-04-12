@@ -17,12 +17,12 @@ export class Engine {
     this.matterEngine = Matter.Engine.create({
       gravity: Engine.GRAVITY,
       constraintIterations: 4,
-      positionIterations: 12,
-      velocityIterations: 8,
+      positionIterations: 6,
+      velocityIterations: 4,
       enableSleeping: false,
     })
     this.game = new Game({
-      matterEngine: this.matterEngine,
+      engine: this,
     })
     this.frame = 0
     this.frameTimestamp = Engine.now()
