@@ -93,8 +93,8 @@ export const restoreEngineFromSnapshot = (
   snapshot: Snapshot,
   options?: RestoreEngineFromSnapshotOptions
 ) => {
-  engine.frame = Number(snapshot.id)
-  engine.frameTimestamp = snapshot.time
+  // engine.frame = Number(snapshot.id)
+  // engine.frameTimestamp = snapshot.time
   engine.game.events = snapshot.events.map((event) => ({
     data: JSON.parse(event.data || ''),
     name: event.event,

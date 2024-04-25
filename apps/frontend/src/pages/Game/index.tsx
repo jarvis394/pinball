@@ -149,6 +149,10 @@ const Game: React.FC<GameProps> = ({ singleplayer }) => {
 
     app.current = new Application(canvasContainer.current)
 
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    //@ts-expect-error
+    window.__PIXI_APP__ = app.current
+
     return () => {
       engine.current?.destroy()
       app.current?.destroy(true)
