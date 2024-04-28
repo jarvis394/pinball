@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   OnApplicationShutdown,
   ShutdownSignal,
   Type,
@@ -10,7 +11,8 @@ import * as http from 'http'
 
 @Injectable()
 export class ColyseusService implements OnApplicationShutdown {
-  server: Server | null = null
+  public server: Server | null = null
+  private readonly logger = new Logger(ColyseusService.name)
 
   createServer(httpServer: http.Server) {
     if (this.server) return
@@ -22,6 +24,8 @@ export class ColyseusService implements OnApplicationShutdown {
       presence: new RedisPresence(),
       greet: false,
     })
+
+    this.server.simulateLatency(100)
   }
 
   defineRoom(name: string, room: Type<Room>) {
@@ -36,9 +40,7 @@ export class ColyseusService implements OnApplicationShutdown {
 
   onApplicationShutdown(sig: ShutdownSignal) {
     if (!this.server) return
-    console.info(
-      `Caught signal ${sig}. Game service shutting down on ${new Date()}.`
-    )
+    this.logger.log(`Caught signal "${sig}", shutting down`)
     this.server.gracefullyShutdown()
   }
 }

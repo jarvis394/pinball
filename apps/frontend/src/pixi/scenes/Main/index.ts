@@ -9,7 +9,10 @@ import CurrentScore from '../../components/CurrentScore'
 import { Debug } from '../../components/Debug'
 import Timer from '../../components/Timer'
 import { VKUserData } from '../../../models/ClientEnginePlayer'
-import { ENABLE_DEBUG_OVERLAY } from '../../../config/constants'
+import {
+  ENABLE_DEBUG_OVERLAY,
+  ENABLE_TEST_USER,
+} from '../../../config/constants'
 
 type MainSceneProps = {
   app: Application
@@ -73,7 +76,12 @@ class MainScene extends PIXIObject {
     this.clientEngine.startGame()
   }
 
+  // TODO: rewrite to use redux store data
   getUserId() {
+    if (ENABLE_TEST_USER) {
+      return '1'
+    }
+
     const params = new URLSearchParams(window.location.search)
     return params.get('vk_user_id')
   }

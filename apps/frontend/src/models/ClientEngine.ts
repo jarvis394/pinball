@@ -84,6 +84,7 @@ enum ClientInputActionKeyCodes {
   SPACE = 'Space',
 }
 
+// TODO: Rewrite event system so events are stored in a queue from all snapshots received from server
 export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   private static PADDLE_LEFT_LABEL = 'paddle_bottom_left'
   private static PADDLE_RIGHT_LABEL = 'paddle_bottom_right'
@@ -105,6 +106,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   clientSnapshotsVault: Map<string, Snapshot> = new Map()
   clientSnapshotsLast = '0'
   localVKUserData?: VKUserData
+  isGameInitialized = false
 
   constructor(
     engine: Engine,
@@ -117,14 +119,12 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.localEngine = new Engine()
     this.userId = userId
     this.timeOffset = -1
-    // this.clientSnapshots = new SnapshotInterpolation(Engine.MIN_FPS)
     this.snapshots = new SnapshotInterpolation(Engine.MIN_FPS, {
       autoCorrectTimeOffset: true,
     })
     this.localVKUserData = localVKUserData
 
     this.snapshots.vault.setMaxSize(500)
-    // this.clientSnapshots.vault.setMaxSize(500)
 
     Matter.Events.on(
       this.engine.matterEngine,
@@ -168,12 +168,12 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       console.error('Error occured in connection:', code, message)
     })
 
-    this.room.onStateChange(this.handleRoomStateChange.bind(this))
     this.room.onMessage(GameEventName.INIT, this.handleRoomInit.bind(this))
     this.room.onMessage(
       GameEventName.GAME_STARTED,
       this.handleGameStart.bind(this)
     )
+    this.room.onStateChange(this.handleRoomStateChange.bind(this))
   }
 
   handleGameStart(data: GameStartedEventData) {
@@ -183,9 +183,11 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   }
 
   handleRoomInit(initData: InitEventData) {
-    if (!this.userId) return
-    this.engine.game.loadMap(GAME_MAPS[this.room!.state.mapName])
-    this.localEngine.game.loadMap(GAME_MAPS[this.room!.state.mapName])
+    if (!this.userId || !this.room) return
+
+    // Load map for local client
+    this.engine.game.loadMap(GAME_MAPS[this.room.state.mapName])
+    this.localEngine.game.loadMap(GAME_MAPS[this.room.state.mapName])
 
     const events: SnapshotEvent[] = []
 
@@ -207,15 +209,15 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.processSnapshotEvents(events)
 
     this.eventEmitter.emit(ClientEngineEvents.INIT_ROOM, initData)
+    this.isGameInitialized = true
   }
 
   handleRoomStateChange(state: GameRoomState) {
+    if (!this.userId) return
+    if (!this.isGameInitialized) return
+
     this.engine.frame = state.frame
     this.engine.frameTimestamp = state.time
-    // this.localEngine.frame = state.frame
-    // this.localEngine.frameTimestamp = state.time
-
-    if (!this.userId) return
 
     const schemaPlayer = state.players.get(this.userId)
     if (!schemaPlayer) return
@@ -280,12 +282,6 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
     this.snapshots.snapshot.add(snapshot)
     this.processSnapshotEvents(snapshot.events)
-
-    // const clientSnapshot = generateSnapshot(this.engine)
-    // if (clientSnapshot) {
-    //   this.clientSnapshots.snapshot.add(clientSnapshot)
-    // }
-
     this.reconcileEngine()
   }
 
@@ -478,12 +474,14 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   processSnapshotEvents(snapshotEvents: SnapshotEvent[]) {
     snapshotEvents.forEach((event) => {
       switch (event.event) {
-        case GameEventName.INIT:
         case GameEventName.UPDATE:
         case GameEventName.ACTIVATE_OBJECTS:
         case GameEventName.DEACTIVATE_OBJECTS:
-        case GameEventName.GAME_STARTED:
         case GameEventName.PLAYER_PINBALL_REDEPLOY:
+          break
+        // We handle these events separately in constructor of ClientEngine
+        case GameEventName.INIT:
+        case GameEventName.GAME_STARTED:
           break
         // Deferred events executed on snapshots sync (ClientEngine.update)
         case GameEventName.PLAYER_LOST_ROUND:
@@ -525,45 +523,39 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.room?.leave(true)
   }
 
-  handlePlayerJoinEvent(raw?: string) {
+  async handlePlayerJoinEvent(raw?: string) {
     const data = parseData<PlayerJoinEventData>(raw)
     if (!data) return
 
+    // Do not process if player already exists
     if (this.players.has(data.playerId)) {
       return
     }
 
     const schemaPlayer = this.room?.state.players.get(data.playerId)
+    if (!schemaPlayer) return
+
+    // We get data for local player when first entering application
+    // so reuse that cached information here and fetch later otherwise
+    const vkUserData =
+      this.userId === data.playerId ? this.localVKUserData : undefined
     const clientEnginePlayer = new ClientEnginePlayer({
       id: data.playerId,
       elo: data.elo,
-      score: 0,
-      currentScore: 0,
-      highScore: 0,
-      vkUserData:
-        this.userId === data.playerId ? this.localVKUserData : undefined,
+      score: schemaPlayer.score,
+      currentScore: schemaPlayer.currentScore,
+      highScore: schemaPlayer.highScore,
+      vkUserData,
     })
     this.players.set(data.playerId, clientEnginePlayer)
 
-    clientEnginePlayer.loadVkUserData().then(() => {
-      this.eventEmitter.emit(ClientEngineEvents.PLAYER_JOIN, clientEnginePlayer)
+    if (!clientEnginePlayer.vkUserData) {
+      await clientEnginePlayer.loadVkUserData()
+    }
 
-      if (!schemaPlayer) return
-
-      // Do not add player to local engine if player is not the local client
-      if (this.userId !== schemaPlayer.id) {
-        return
-      }
-
-      // Load map for local client
-      if (!this.engine.game.world.map) {
-        this.engine.game.loadMap(GAME_MAPS[schemaPlayer.map.map])
-        this.localEngine.game.loadMap(GAME_MAPS[schemaPlayer.map.map])
-      }
-
-      this.addPlayerToEngine(this.engine, schemaPlayer)
-      this.addPlayerToEngine(this.localEngine, schemaPlayer)
-    })
+    this.addPlayerToEngine(this.engine, schemaPlayer)
+    this.addPlayerToEngine(this.localEngine, schemaPlayer)
+    this.eventEmitter.emit(ClientEngineEvents.PLAYER_JOIN, clientEnginePlayer)
   }
 
   addPlayerToEngine(engine: Engine, schemaPlayer: SchemaPlayer) {
@@ -572,17 +564,21 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     player.highScore = schemaPlayer.highScore
     player.score = schemaPlayer.score
     player.setServerControlled(this.userId !== schemaPlayer.id)
-    engine.game.setMe(player)
 
-    schemaPlayer.map.pinballs.forEach((schemaPinball) => {
-      const pinball = engine.game.world.addPinballForPlayer(
-        schemaPinball.id,
-        schemaPinball.playerId
-      )
+    if (this.userId === schemaPlayer.id) {
+      engine.game.setMe(player)
 
-      Matter.Body.setPosition(pinball.body, schemaPinball.position)
-      Matter.Body.setVelocity(pinball.body, schemaPinball.velocity)
-    })
+      // note: This applies only for pinball game as we cannot add external pinballs to a game
+      schemaPlayer.map.pinballs.forEach((schemaPinball) => {
+        const pinball = engine.game.world.addPinballForPlayer(
+          schemaPinball.id,
+          schemaPinball.playerId
+        )
+
+        Matter.Body.setPosition(pinball.body, schemaPinball.position)
+        Matter.Body.setVelocity(pinball.body, schemaPinball.velocity)
+      })
+    }
   }
 
   handlePlayerLeftEvent(raw?: string) {

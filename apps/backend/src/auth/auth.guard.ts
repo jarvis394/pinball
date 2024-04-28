@@ -8,6 +8,7 @@ import {
 import { Request } from 'express'
 import { AuthService, UserData } from './auth.service'
 import { Reflector } from '@nestjs/core'
+import { ConfigService } from '../config/config.service'
 
 export interface RequestWithUser extends Request {
   user: UserData
@@ -15,7 +16,11 @@ export interface RequestWithUser extends Request {
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private authService: AuthService, private reflector: Reflector) {}
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigService,
+    private reflector: Reflector
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -27,8 +32,17 @@ export class AuthGuard implements CanActivate {
       return true
     }
 
-    const request = context.switchToHttp().getRequest()
+    const request = context.switchToHttp().getRequest<RequestWithUser>()
     const token = this.extractTokenFromHeader(request)
+
+    if (this.configService.ENABLE_TEST_USER) {
+      request['user'] = {
+        vkAppId: this.configService.VK_APP_ID,
+        vkPlatform: 'vkcom',
+        vkUserId: 1,
+      }
+      return true
+    }
 
     if (!token) {
       throw new UnauthorizedException()
@@ -36,7 +50,7 @@ export class AuthGuard implements CanActivate {
 
     try {
       const payload = this.authService.verify(token)
-      request['user'] = payload
+      request.user = payload
     } catch {
       throw new UnauthorizedException()
     }

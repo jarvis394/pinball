@@ -2,7 +2,7 @@ import bridge from '@vkontakte/vk-bridge'
 
 export type VKUserData = {
   fullname: string
-  avatarUrl: string
+  avatarUrl?: string
 }
 
 export type ClientEnginePlayerJson = {
