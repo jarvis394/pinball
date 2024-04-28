@@ -102,11 +102,14 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   snapshots: SnapshotInterpolation
   players: Map<string, ClientEnginePlayer> = new Map()
   /** Events that are executed on snapshots sync (ClientEngine.update)  */
-  deferredEvents: SnapshotEvent[] = []
+  // deferredEvents: SnapshotEvent[] = []
   clientSnapshotsVault: Map<string, Snapshot> = new Map()
   clientSnapshotsLast = '0'
   localVKUserData?: VKUserData
+  /** Changed to true after GameEvent.GAME_INIT event from server */
   isGameInitialized = false
+  /** Queue for storing all events (including deferred events) */
+  pendingEvents: SnapshotEvent[] = []
 
   constructor(
     engine: Engine,
@@ -182,17 +185,17 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.localEngine.game.startGame()
   }
 
-  handleRoomInit(initData: InitEventData) {
+  handleRoomInit(data: InitEventData) {
     if (!this.userId || !this.room) return
+
+    console.log('Initializing room with init data:', data)
 
     // Load map for local client
     this.engine.game.loadMap(GAME_MAPS[this.room.state.mapName])
     this.localEngine.game.loadMap(GAME_MAPS[this.room.state.mapName])
 
-    const events: SnapshotEvent[] = []
-
     // Add all players from state to client engine
-    Object.values(initData.players).forEach((userData) => {
+    Object.values(data.players).forEach((userData) => {
       const data: PlayerJoinEventData = {
         name: GameEventName.PLAYER_JOIN,
         elo: userData.elo,
@@ -200,15 +203,15 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
         frame: 0,
         time: 0,
       }
-      events.push({
+      this.pendingEvents.push({
         event: GameEventName.PLAYER_JOIN,
         data: JSON.stringify(data),
       })
     })
 
-    this.processSnapshotEvents(events)
+    this.processPendingSnapshotEvents()
 
-    this.eventEmitter.emit(ClientEngineEvents.INIT_ROOM, initData)
+    this.eventEmitter.emit(ClientEngineEvents.INIT_ROOM, data)
     this.isGameInitialized = true
   }
 
@@ -281,7 +284,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     })
 
     this.snapshots.snapshot.add(snapshot)
-    this.processSnapshotEvents(snapshot.events)
+    this.pendingEvents.concat(snapshot.events)
     this.reconcileEngine()
   }
 
@@ -439,72 +442,47 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     restorePlayerFromSnapshot(this.engine, snapshot)
     restoreMapActiveObjectsFromSnapshot(this.engine, snapshot)
     restorePinballsFromSnapshot(this.engine, pinballs)
-    this.processDeferredEvents()
+    this.processPendingSnapshotEvents()
     this.syncEngineByLocalEngine()
   }
 
-  processDeferredEvents() {
-    this.deferredEvents.forEach((event) => {
-      switch (event.event) {
-        case GameEventName.INIT:
-        case GameEventName.UPDATE:
-        case GameEventName.ACTIVATE_OBJECTS:
-        case GameEventName.DEACTIVATE_OBJECTS:
-        case GameEventName.GAME_STARTED:
-        case GameEventName.PLAYER_PINBALL_REDEPLOY:
-        case GameEventName.GAME_ENDED:
-        case GameEventName.PLAYER_JOIN:
-        case GameEventName.PLAYER_LEFT:
-          break
-        case GameEventName.PLAYER_LOST_ROUND: {
-          // this.handlePlayerLostRoundEvent(event.data)
-          break
-        }
-        case GameEventName.PING_OBJECTS:
-          this.handlePingObjectsEvent(event.data)
-          break
-        default:
-          return exhaustivnessCheck(event.event)
-      }
-    })
-
-    this.deferredEvents = []
+  processPendingSnapshotEvents() {
+    this.pendingEvents.forEach((event) => this.processSnapshotEvent(event))
+    this.pendingEvents = []
   }
 
-  processSnapshotEvents(snapshotEvents: SnapshotEvent[]) {
-    snapshotEvents.forEach((event) => {
-      switch (event.event) {
-        case GameEventName.UPDATE:
-        case GameEventName.ACTIVATE_OBJECTS:
-        case GameEventName.DEACTIVATE_OBJECTS:
-        case GameEventName.PLAYER_PINBALL_REDEPLOY:
-          break
-        // We handle these events separately in constructor of ClientEngine
-        case GameEventName.INIT:
-        case GameEventName.GAME_STARTED:
-          break
-        // Deferred events executed on snapshots sync (ClientEngine.update)
-        case GameEventName.PLAYER_LOST_ROUND:
-        case GameEventName.PING_OBJECTS: {
-          this.deferredEvents.push(event)
-          break
-        }
-        case GameEventName.GAME_ENDED: {
-          this.handleGameEndedEvent(event.data)
-          break
-        }
-        case GameEventName.PLAYER_JOIN: {
-          this.handlePlayerJoinEvent(event.data)
-          break
-        }
-        case GameEventName.PLAYER_LEFT: {
-          this.handlePlayerLeftEvent(event.data)
-          break
-        }
-        default:
-          return exhaustivnessCheck(event.event)
+  processSnapshotEvent(event: SnapshotEvent) {
+    switch (event.event) {
+      case GameEventName.UPDATE:
+      case GameEventName.ACTIVATE_OBJECTS:
+      case GameEventName.DEACTIVATE_OBJECTS:
+      case GameEventName.PLAYER_PINBALL_REDEPLOY:
+      case GameEventName.PLAYER_LOST_ROUND:
+        break
+      // We handle these events separately in constructor of ClientEngine
+      // Events below are sent by server via regular send method, not with snapshot
+      case GameEventName.INIT:
+      case GameEventName.GAME_STARTED:
+        break
+      case GameEventName.PING_OBJECTS: {
+        this.handlePingObjectsEvent(event.data)
+        break
       }
-    })
+      case GameEventName.GAME_ENDED: {
+        this.handleGameEndedEvent(event.data)
+        break
+      }
+      case GameEventName.PLAYER_JOIN: {
+        this.handlePlayerJoinEvent(event.data)
+        break
+      }
+      case GameEventName.PLAYER_LEFT: {
+        this.handlePlayerLeftEvent(event.data)
+        break
+      }
+      default:
+        return exhaustivnessCheck(event.event)
+    }
   }
 
   handleGameEndedEvent(raw?: string) {

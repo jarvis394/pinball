@@ -8,14 +8,19 @@ import {
 import { RedisPresence, Room, Server } from 'colyseus'
 import { WebSocketTransport } from '@colyseus/ws-transport'
 import * as http from 'http'
+import { ConfigService } from '../config/config.service'
 
 @Injectable()
 export class ColyseusService implements OnApplicationShutdown {
   public server: Server | null = null
   private readonly logger = new Logger(ColyseusService.name)
 
+  constructor(private readonly configService: ConfigService) {}
+
   createServer(httpServer: http.Server) {
     if (this.server) return
+
+    const latency = this.configService.MULTIPLAYER_LATENCY_SIMULATION
 
     this.server = new Server({
       transport: new WebSocketTransport({
@@ -25,7 +30,8 @@ export class ColyseusService implements OnApplicationShutdown {
       greet: false,
     })
 
-    this.server.simulateLatency(100)
+    // Artificial latency controlled by env variable
+    latency && this.server.simulateLatency(latency)
   }
 
   defineRoom(name: string, room: Type<Room>) {

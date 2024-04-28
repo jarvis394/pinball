@@ -31,7 +31,7 @@ const Main: React.FC = () => {
         <Avatar
           size={48}
           src={bridgeData?.avatarUrl}
-          initials={bridgeData?.fullname}
+          initials={bridgeData?.fullname.slice(0, 1)}
         />
         <div className="Main__userContent">
           <h1>{bridgeData?.fullname}</h1>
