@@ -26,7 +26,7 @@ import {
   GameResult,
 } from '@pinball/engine'
 import GameController from '../../controllers/GameController'
-import { User, PrismaClient } from '@prisma/client'
+import { User, PrismaClient, Prisma } from '@prisma/client'
 import { Injectable } from '@nestjs/common'
 
 export interface ClientData {
@@ -245,8 +245,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       data.placements[0].result = GameResult.WON
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const transactions: any[] = []
+    const transactions: Array<Prisma.PrismaPromise<User>> = []
 
     // Update users' elo
     data.placements.forEach((placement) => {
