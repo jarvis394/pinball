@@ -7,7 +7,7 @@ import {
   Snapshot,
   generateSnapshot,
 } from '@pinball/colyseus-schema'
-import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
+import { SnapshotInterpolation } from 'snapshot-interpolation'
 import { Client } from '../rooms/game'
 
 class GamePlayer {
@@ -15,14 +15,16 @@ class GamePlayer {
   clientId: string
   engine: Engine
   map: GameMapData
-  snapshotInterpolation: SnapshotInterpolation
+  snapshotInterpolation: SnapshotInterpolation<Snapshot>
 
   constructor(id: string, clientId: string, map: GameMapData) {
     this.id = id
     this.clientId = clientId
     this.map = map
     this.engine = new Engine()
-    this.snapshotInterpolation = new SnapshotInterpolation()
+    this.snapshotInterpolation = new SnapshotInterpolation({
+      vaultSize: 100,
+    })
   }
 
   init() {
@@ -83,19 +85,20 @@ class GameController {
 
   update(delta: number): Snapshot[] {
     const snapshots: Snapshot[] = []
+
     this.players.forEach((player) => {
       player.engine.update(delta)
       const snapshot = generateSnapshot(player.engine)
       snapshots.push(snapshot)
-      player.snapshotInterpolation.snapshot.add(snapshot)
+      player.snapshotInterpolation.addSnapshot(snapshot)
     })
 
     return snapshots
   }
 
   syncRoomStateBySnapshot(state: GameRoomState, snapshot: Snapshot) {
-    state.frame = Number(snapshot.id)
-    state.time = snapshot.time
+    state.frame = Number(snapshot.frame)
+    state.timestamp = snapshot.timestamp
 
     let player = state.players.get(snapshot.playerId)
 

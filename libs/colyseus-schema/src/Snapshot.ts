@@ -1,25 +1,23 @@
 import { Engine, GameEventName } from '@pinball/engine'
 import Matter from 'matter-js'
-import { Types } from '@geckos.io/snapshot-interpolation'
+import { Entity, Snapshot as BaseSnapshot } from 'snapshot-interpolation'
 import { GameMapName } from '@pinball/shared'
 
-export type SnapshotPinball = {
+export type SnapshotPinball = Entity<{
   id: string
   playerId: string
   positionX: number
   positionY: number
   velocityX: number
   velocityY: number
-}
+}>
 
 export type SnapshotEvent = {
   event: GameEventName
   data?: string
 }
 
-export interface Snapshot extends Types.Snapshot {
-  id: Types.ID
-  time: Types.Time
+export interface Snapshot extends BaseSnapshot {
   mapName: GameMapName
   playerId: string
   playerScore: number
@@ -69,8 +67,8 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
   })
 
   return {
-    id: engine.frame.toString(),
-    time: Date.now(),
+    frame: engine.frame,
+    timestamp: Date.now(),
     mapName: engine.game.world.mapName,
     playerId: player.id,
     playerScore: player.score,
@@ -93,8 +91,6 @@ export const restoreEngineFromSnapshot = (
   snapshot: Snapshot,
   options?: RestoreEngineFromSnapshotOptions
 ) => {
-  // engine.frame = Number(snapshot.id)
-  // engine.frameTimestamp = snapshot.time
   engine.game.events = snapshot.events.map((event) => ({
     data: JSON.parse(event.data || ''),
     name: event.event,

@@ -18,7 +18,7 @@ import {
 } from '@pinball/colyseus-schema'
 import Matter from 'matter-js'
 import * as Colyseus from 'colyseus.js'
-import { SnapshotInterpolation } from '@geckos.io/snapshot-interpolation'
+import { SnapshotInterpolation, Vault } from 'snapshot-interpolation'
 import {
   ClientEnginePlayer,
   ClientEnginePlayerJson,
@@ -99,12 +99,11 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   keysReleased: Set<string> = new Set()
   heldKeys: Set<string> = new Set()
   timeOffset: number
-  snapshots: SnapshotInterpolation
+  snapshots: SnapshotInterpolation<Snapshot>
   players: Map<string, ClientEnginePlayer> = new Map()
   /** Events that are executed on snapshots sync (ClientEngine.update)  */
   // deferredEvents: SnapshotEvent[] = []
-  clientSnapshotsVault: Map<string, Snapshot> = new Map()
-  clientSnapshotsLast = '0'
+  clientSnapshotsVault: Vault<Snapshot>
   localVKUserData?: VKUserData
   /** Changed to true after GameEvent.GAME_INIT event from server */
   isGameInitialized = false
@@ -122,12 +121,12 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.localEngine = new Engine()
     this.userId = userId
     this.timeOffset = -1
-    this.snapshots = new SnapshotInterpolation(Engine.MIN_FPS, {
-      autoCorrectTimeOffset: true,
+    this.snapshots = new SnapshotInterpolation({
+      serverFPS: Engine.MIN_FPS,
+      vaultSize: 200,
     })
+    this.clientSnapshotsVault = new Vault(200)
     this.localVKUserData = localVKUserData
-
-    this.snapshots.vault.setMaxSize(500)
 
     Matter.Events.on(
       this.engine.matterEngine,
@@ -220,7 +219,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     if (!this.isGameInitialized) return
 
     this.engine.frame = state.frame
-    this.engine.frameTimestamp = state.time
+    this.engine.frameTimestamp = state.timestamp
 
     const schemaPlayer = state.players.get(this.userId)
     if (!schemaPlayer) return
@@ -239,8 +238,8 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     })
 
     const snapshot: Snapshot = {
-      id: state.frame.toString(),
-      time: state.time,
+      frame: state.frame,
+      timestamp: state.timestamp,
       playerId: schemaPlayer.id,
       playerScore: schemaPlayer.score,
       playerCurrentScore: schemaPlayer.currentScore,
@@ -283,7 +282,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       }
     })
 
-    this.snapshots.snapshot.add(snapshot)
+    this.snapshots.addSnapshot(snapshot)
     this.pendingEvents.concat(snapshot.events)
     this.reconcileEngine()
   }
@@ -292,10 +291,8 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     serverSnapshot: Snapshot | undefined
     playerSnapshot: Snapshot | undefined
   } {
-    const serverSnapshot = this.snapshots.vault.get() as Snapshot | undefined
-    const playerSnapshot = this.clientSnapshotsVault.get(
-      this.clientSnapshotsLast
-    ) as Snapshot | undefined
+    const serverSnapshot = this.snapshots.vault.getLast()
+    const playerSnapshot = this.clientSnapshotsVault.getLast()
 
     return { serverSnapshot, playerSnapshot }
   }
@@ -331,30 +328,15 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.reconcilePinballs(serverSnapshot, playerSnapshot)
   }
 
-  getClientSnapshot(time: number): Snapshot | undefined {
-    let res: Snapshot | undefined
-
-    for (const snapshot of this.clientSnapshotsVault.values()) {
-      if (
-        time > snapshot.time - Engine.MIN_DELTA &&
-        time < snapshot.time + Engine.MIN_DELTA
-      ) {
-        res = snapshot
-        break
-      }
-    }
-
-    return res
-  }
-
   reconcilePinballs(serverSnapshot: Snapshot, playerSnapshot: Snapshot) {
     let currentSnapshot = serverSnapshot
-    let currentTime = serverSnapshot.time
-    let currentPlayerSnapshot = this.getClientSnapshot(currentTime)
+    let currentTime = serverSnapshot.timestamp
+    let currentPlayerSnapshot =
+      this.clientSnapshotsVault.getClosest(currentTime)
 
     if (!currentPlayerSnapshot) {
       console.warn(
-        `[reconcile ${serverSnapshot.id}] Cannot find snapshot in client vault closest to time ${currentTime}`
+        `[reconcile ${serverSnapshot.frame}] Cannot find snapshot in client vault closest to time ${currentTime}`
       )
       return
     }
@@ -362,16 +344,34 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       return
     }
 
+    const playerSnapshots: Snapshot[] = []
+
+    // Iterate backwards from present time to server time
+    // to collect all player snapshots
+    for (
+      let cur = playerSnapshot.timestamp;
+      cur > serverSnapshot.timestamp;
+      cur -= Engine.MIN_DELTA
+    ) {
+      const snapshot = this.clientSnapshotsVault.getClosest(cur)
+      snapshot && playerSnapshots.push(snapshot)
+    }
+
+    this.clientSnapshotsVault.remove(
+      this.clientSnapshotsVault.size,
+      playerSnapshots.length
+    )
+
     restoreEngineFromSnapshot(this.localEngine, currentSnapshot, {
       restoreNonServerControlled: true,
     })
 
-    while (currentTime < playerSnapshot.time) {
-      currentPlayerSnapshot = this.getClientSnapshot(currentTime)
+    while (currentTime < playerSnapshot.timestamp) {
+      currentPlayerSnapshot = this.clientSnapshotsVault.getClosest(currentTime)
 
       if (!currentPlayerSnapshot) {
         console.warn(
-          `[reconcile ${serverSnapshot.id}] Cannot find snapshot in client vault closest to time ${currentTime} (inside loop)`
+          `[reconcile ${serverSnapshot.frame}] Cannot find snapshot in client vault closest to time ${currentTime} (inside loop)`
         )
         currentTime += Engine.MIN_DELTA
         this.localEngine.update(Engine.MIN_DELTA)
@@ -409,10 +409,14 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
         })) || []
 
       currentSnapshot = generateSnapshot(this.localEngine)
-      currentTime = currentSnapshot.time
-      this.clientSnapshotsVault.set(currentPlayerSnapshot.id, currentSnapshot)
+      currentTime = currentSnapshot.timestamp
+      playerSnapshots.push(currentSnapshot)
       this.localEngine.update(Engine.MIN_DELTA)
     }
+
+    playerSnapshots.forEach((snapshot) =>
+      this.clientSnapshotsVault.add(snapshot)
+    )
   }
 
   handleBeforeUpdate(event: BeforeUpdateEvent) {
@@ -422,22 +426,26 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     this.localEngine.update(event.delta)
 
     const snapshot = generateSnapshot(this.localEngine)
-    this.clientSnapshotsVault.set(snapshot.id, snapshot)
-    this.clientSnapshotsLast = snapshot.id
+    this.clientSnapshotsVault.add(snapshot)
   }
 
   update() {
     const interpolatedSnapshot = this.snapshots.calcInterpolation(
-      'positionX positionY velocityX velocityY',
+      {
+        positionX: 'linear',
+        positionY: 'linear',
+        velocityX: 'linear',
+        velocityY: 'linear',
+      },
       'pinballs'
     )
-    const snapshot = this.snapshots.vault.getById(
-      interpolatedSnapshot?.newer || ''
-    ) as Snapshot | undefined
+    const snapshot = this.snapshots.vault.getByFrame(
+      interpolatedSnapshot?.newer || -1
+    )
 
     if (!interpolatedSnapshot || !snapshot) return
 
-    const pinballs = interpolatedSnapshot.state as Snapshot['state']['pinballs']
+    const pinballs = interpolatedSnapshot.state
 
     restorePlayerFromSnapshot(this.engine, snapshot)
     restoreMapActiveObjectsFromSnapshot(this.engine, snapshot)
@@ -682,13 +690,10 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       playerId: this.userId,
     }
     const mapActiveObjects: string[] = []
-    const clientSnapshot = this.clientSnapshotsVault.get(
-      this.clientSnapshotsLast
-    )
+    const clientSnapshot = this.clientSnapshotsVault.getLast()
     if (!clientSnapshot) {
       console.warn(
-        'Client snapshot when changing object state was not found:',
-        this.clientSnapshotsLast
+        'Last client snapshot when changing object state was not found'
       )
       return
     }
@@ -703,9 +708,9 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
       data: JSON.stringify(eventData),
     })
 
-    console.log(clientSnapshot.id, clientSnapshot)
-
-    this.clientSnapshotsVault.set(clientSnapshot.id, clientSnapshot)
+    console.log(clientSnapshot.frame, clientSnapshot)
+    this.clientSnapshotsVault.remove(this.clientSnapshotsVault.size - 1)
+    this.clientSnapshotsVault.add(clientSnapshot)
   }
 
   onKeyDown(e: KeyboardEvent) {
@@ -747,7 +752,7 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   }
 
   destroy() {
-    this.clientSnapshotsVault = new Map()
+    this.clientSnapshotsVault = new Vault()
     this.room?.removeAllListeners()
     this.room = undefined
     this.engine.destroy()

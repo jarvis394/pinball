@@ -135,7 +135,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       name: GameEventName.INIT,
       players: this.dbPlayersData,
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
     }
 
     client.send(GameEventName.INIT, initData)
@@ -144,7 +144,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       name: GameEventName.PLAYER_JOIN,
       playerId: gamePlayer.id,
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
       elo: dbUser.elo,
     }
 
@@ -172,7 +172,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       name: GameEventName.PLAYER_LEFT,
       playerId,
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
     }
 
     this.state.events.push(
@@ -224,7 +224,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       eloChange: {},
       placements: [],
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
     }
 
     this.gameController.players.forEach((player) => {
@@ -310,7 +310,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       playerId,
       label: fieldObject.label,
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
     }
 
     this.state.events.push(
@@ -330,7 +330,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       playerId,
       pinballId,
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
     }
 
     this.state.events.push(
@@ -346,7 +346,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       name: GameEventName.PLAYER_LOST_ROUND,
       playerId,
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
     }
 
     this.state.events.push(
@@ -367,7 +367,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       playerId: client.userData?.userId,
       labels,
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
     }
 
     this.state.events.push(
@@ -385,7 +385,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       playerId: client.userData.userId,
       labels,
       frame: this.state.frame,
-      time: this.state.time,
+      time: this.state.timestamp,
     }
 
     this.state.events.push(

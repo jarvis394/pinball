@@ -60,7 +60,7 @@ export class SchemaEvent extends Schema {
 
 export class GameRoomState extends Schema {
   @type('int64') frame = 0
-  @type('int64') time = 0
+  @type('int64') timestamp = 0
   @type('string') mapName: GameMapName
   @type([SchemaEvent]) events: SchemaEvent[] = []
   @type({ map: SchemaPlayer }) players: MapSchema<SchemaPlayer, string> =

@@ -28,7 +28,7 @@ export class PinballDebug extends PIXI.Container {
   }
 
   update() {
-    const snapshot = this.clientEngine.snapshots.vault.get() as
+    const snapshot = this.clientEngine.snapshots.vault.getLast() as
       | Snapshot
       | undefined
     if (!snapshot) return
