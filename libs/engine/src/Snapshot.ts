@@ -1,7 +1,8 @@
-import { Engine, GameEventName } from '@pinball/engine'
 import Matter from 'matter-js'
 import { Entity, Snapshot as BaseSnapshot } from 'snapshot-interpolation'
 import { GameMapName } from '@pinball/shared'
+import { Engine } from './Engine'
+import { GameEventName } from './GameEvent'
 
 export type SnapshotPinball = Entity<{
   id: string

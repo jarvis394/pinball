@@ -5,11 +5,6 @@ import {
   exhaustivnessCheck,
 } from '@pinball/shared'
 import {
-  GameRoomState,
-  generateSnapshot,
-  SchemaEvent,
-} from '@pinball/colyseus-schema'
-import {
   Engine,
   GameEventName,
   ActivateObjectsEventData,
@@ -24,6 +19,9 @@ import {
   GameResultsEventData,
   Game,
   GameResult,
+  GameRoomState,
+  generateSnapshot,
+  SchemaEvent,
 } from '@pinball/engine'
 import GameController from '../../controllers/GameController'
 import { User, PrismaClient, Prisma } from '@prisma/client'
@@ -295,7 +293,12 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
       new SchemaEvent(GameEventName.GAME_ENDED, JSON.stringify(data))
     )
 
+    this.broadcast(GameEventName.GAME_ENDED, JSON.stringify(data))
+
     this.gameController.endGame()
+    this.setSimulationInterval(() => {})
+    this.clock.stop()
+    this.clock.clear()
   }
 
   handlePingObject({

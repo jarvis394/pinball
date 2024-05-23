@@ -1,5 +1,4 @@
-import { Pinball } from '@pinball/engine'
-import { Snapshot, SnapshotPinball } from '@pinball/colyseus-schema'
+import { Pinball, Snapshot, SnapshotPinball } from '@pinball/engine'
 import { ClientEngine } from '../../../models/ClientEngine'
 import * as PIXI from 'pixi.js'
 
@@ -28,7 +27,7 @@ export class PinballDebug extends PIXI.Container {
   }
 
   update() {
-    const snapshot = this.clientEngine.snapshots.vault.getLast() as
+    const snapshot = this.clientEngine.engine.snapshots.vault.getLast() as
       | Snapshot
       | undefined
     if (!snapshot) return

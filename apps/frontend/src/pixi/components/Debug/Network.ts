@@ -56,7 +56,7 @@ export class NetworkPingDebug extends PIXI.Graphics {
   }
 
   getText() {
-    return this.clientEngine.snapshots.timeOffset + 'ms'
+    return this.clientEngine.engine.snapshots.timeOffset + 'ms'
   }
 
   getPosition() {

@@ -129,7 +129,6 @@ class MainScene extends PIXIObject {
       return
     }
 
-    this.viewport.fit(interpolation)
     this.pinballs.forEach((pinball) => pinball.update(interpolation))
     this.gameMap.update()
     this.currentScore.update()

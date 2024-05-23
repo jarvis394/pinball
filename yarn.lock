@@ -10503,10 +10503,10 @@ snake-case@^3.0.4:
     dot-case "^3.0.4"
     tslib "^2.0.3"
 
-snapshot-interpolation@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/snapshot-interpolation/-/snapshot-interpolation-1.0.1.tgz#ed64d46cdd22da2c65ceab00393d2fd5fb6dd028"
-  integrity sha512-+SG5J4DZdZWr/XtqcAacxclfuW51qbtOkRYDd8yebf7D1GzVsg5uN6BjGh2mVD+/Q6+1LIkD1zck4VDAauxyNQ==
+snapshot-interpolation@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/snapshot-interpolation/-/snapshot-interpolation-1.1.0.tgz#c047d4bb285c53808e3b6676ef0a932bc6139a81"
+  integrity sha512-W6po1XgRXHpPrWTC52AY3+0eMvzliwy7uul2RhMjqhbbPHL34apL+MqizVFF5R4lKP+M4oF29BgZ/g8j/jpUEQ==
   dependencies:
     ring-buffer-ts "^1.2.0"
 

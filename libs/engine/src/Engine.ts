@@ -1,8 +1,11 @@
 import Matter from 'matter-js'
 import Loop from 'mainloop.js'
 import { Game } from './Game'
+import { SnapshotInterpolation } from 'snapshot-interpolation'
+import { Snapshot } from './Snapshot'
 
 export class Engine {
+  static SNAPSHOTS_VAULT_SIZE = 200
   static MIN_FPS = 60
   static MIN_DELTA = 1000 / Engine.MIN_FPS
   static GRAVITY = Matter.Vector.create(0, 0.75)
@@ -12,6 +15,7 @@ export class Engine {
   frame: number
   frameTimestamp: number
   lastDelta: number
+  snapshots: SnapshotInterpolation<Snapshot>
 
   constructor() {
     this.matterEngine = Matter.Engine.create({
@@ -27,6 +31,10 @@ export class Engine {
     this.frame = 0
     this.frameTimestamp = Engine.now()
     this.lastDelta = 0
+    this.snapshots = new SnapshotInterpolation({
+      serverFPS: Engine.MIN_FPS,
+      vaultSize: Engine.SNAPSHOTS_VAULT_SIZE,
+    })
 
     // Restitution=1 doesn't work properly in matter.js, below is a workaround.
     // see: https://github.com/liabru/matter-js/issues/394
@@ -53,6 +61,7 @@ export class Engine {
   public destroy() {
     Loop.stop()
     Matter.Engine.clear(this.matterEngine)
+    this.snapshots.vault.clear()
   }
 
   public static now() {

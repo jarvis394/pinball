@@ -1,5 +1,5 @@
 import { MapSchema, Schema, type } from '@colyseus/schema'
-import { GameEventName } from '@pinball/engine'
+import { GameEventName } from './GameEvent'
 import { GameMapName } from '@pinball/shared'
 
 export class SchemaVector extends Schema {

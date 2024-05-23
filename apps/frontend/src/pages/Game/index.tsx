@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import Application from '../../pixi/Application'
 import useMountEffect from '../../hooks/useMountEffect'
-import { Engine } from '@pinball/engine'
-import { GameRoomState } from '@pinball/colyseus-schema'
+import { Engine, GameRoomState } from '@pinball/engine'
 import MainLoop from 'mainloop.js'
 import MainScene from '../../pixi/scenes/Main'
 import * as Colyseus from 'colyseus.js'
@@ -150,11 +149,13 @@ const Game: React.FC<GameProps> = ({ singleplayer }) => {
     app.current = new Application(canvasContainer.current)
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    //@ts-expect-error
+    // @ts-expect-error Need better typings for window object, rewrite
+    // Used for PIXI debugging extension
     window.__PIXI_APP__ = app.current
 
     return () => {
       engine.current?.destroy()
+      scene.current?.viewport.destroy()
       app.current?.destroy(true)
     }
   })

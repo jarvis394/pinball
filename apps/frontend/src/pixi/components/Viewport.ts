@@ -1,11 +1,9 @@
-import { lerp } from '@pinball/shared'
 import { Engine } from '@pinball/engine'
 import Matter from 'matter-js'
 import { Viewport as PixiViewport } from 'pixi-viewport'
 import { DisplayObject } from 'pixi.js'
 import { MATTER_CANVAS_ID, PIXI_CANVAS_CONTAINER_ID } from '../../pages/Game'
 import Application from '../Application'
-import MainLoop from 'mainloop.js'
 import { ENABLE_DEBUG_OVERLAY } from '../../config/constants'
 
 class Viewport {
@@ -57,6 +55,7 @@ class Viewport {
       const { scale } = this.getViewportDimensions()
       this.root.resize(width, height)
       this.root.setZoom(scale, true)
+      this.translateMatterRender()
     })
     this.resizeObserver.observe(canvasContainer)
 
@@ -97,8 +96,8 @@ class Viewport {
         showAngleIndicator: true,
         showVelocity: true,
         pixelRatio: window.devicePixelRatio || 1,
-        // showPerformance: true,
-        // showStats: true,
+        showPerformance: true,
+        showStats: true,
         hasBounds: true,
       },
     })
@@ -154,26 +153,6 @@ class Viewport {
     this.root.fit(true)
   }
 
-  fit(_interpolation: number) {
-    const tickScale = Engine.MIN_FPS / MainLoop.getFPS()
-    const { x, y, scale } = this.getViewportDimensions()
-    this.viewportPosition = {
-      x: lerp(this.viewportPosition.x, x, 0.05 * tickScale),
-      y: lerp(this.viewportPosition.y, y, 0.05 * tickScale),
-    }
-    this.viewportScale = lerp(this.viewportScale, scale, 0.05)
-
-    this.root.animate({
-      time: 0,
-      position: this.viewportPosition,
-      scale: this.viewportScale,
-      ease: 'linear',
-      removeOnInterrupt: false,
-    })
-
-    this.translateMatterRender()
-  }
-
   getViewportDimensions() {
     const x = this.worldWidth / 2
     const y = this.worldHeight / 2
@@ -181,7 +160,7 @@ class Viewport {
       Math.max(this.worldWidth, this.worldHeight) + Viewport.PADDING * 2
     let scale = Math.min(this.screenHeight / largestWorldSide, 1)
 
-    // Ajust to very narrow screen
+    // Ajust to a very narrow screen
     if (this.screenWidth < this.worldWidth * scale) {
       scale = this.screenWidth / this.worldWidth
     }
@@ -199,6 +178,11 @@ class Viewport {
 
   removeChild(...children: DisplayObject[]) {
     return this.root.removeChild(...children)
+  }
+
+  destroy() {
+    this.root.destroy()
+    this.resizeObserver.disconnect()
   }
 }
 
