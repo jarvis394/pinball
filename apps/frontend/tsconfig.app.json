@@ -7,10 +7,7 @@
       "@nx/react/typings/cssmodule.d.ts",
       "@nx/react/typings/image.d.ts",
       "vite/client"
-    ],
-    "paths": {
-      "@pinball/shared": ["apps/shared/src/index.ts"]
-    }
+    ]
   },
   "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]
 }

@@ -1,33 +1,38 @@
 import * as PIXI from 'pixi.js'
 
-PIXI.BaseTexture.defaultOptions.scaleMode = PIXI.SCALE_MODES.NEAREST
+export default class Application extends PIXI.Application<
+  PIXI.Renderer<HTMLCanvasElement>
+> {
+  container: HTMLDivElement
+  constructor(container: HTMLDivElement) {
+    super()
 
-export default class Application extends PIXI.Application<HTMLCanvasElement> {
-  constructor(element: HTMLDivElement, props?: PIXI.IApplicationOptions) {
-    super({
-      width: element.clientWidth,
-      height: element.clientHeight,
+    if (!container) {
+      throw new Error('No element for canvas container provided')
+    }
+
+    this.container = container
+    this.stage.sortableChildren = true
+  }
+
+  async initApplication(options?: Partial<PIXI.ApplicationOptions>) {
+    await super.init({
+      width: this.container.clientWidth,
+      height: this.container.clientHeight,
       resolution: window.devicePixelRatio || 1,
       backgroundAlpha: 0,
       antialias: true,
       autoDensity: true,
-      resizeTo: element,
-      ...props,
+      resizeTo: this.container,
+      ...options,
     })
 
-    if (!element) {
-      throw new Error('No element for canvas provided')
-    }
-
-    this.stage.sortableChildren = true
-    element.appendChild(this.view)
-
-    this.view.style.position = 'fixed'
-    this.view.style.display = 'block'
-    this.view.style.left = '0px'
-    this.view.style.top = '0px'
-    this.view.style.height = '100%'
-    this.view.style.width = '100%'
-    this.view.style.zIndex = '0'
+    this.canvas.style.position = 'fixed'
+    this.canvas.style.display = 'block'
+    this.canvas.style.left = '0px'
+    this.canvas.style.top = '0px'
+    this.canvas.style.height = '100%'
+    this.canvas.style.width = '100%'
+    this.canvas.style.zIndex = '0'
   }
 }

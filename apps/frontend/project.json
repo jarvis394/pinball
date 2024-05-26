@@ -30,8 +30,7 @@
         "development": {
           "buildTarget": "frontend:build:development",
           "hmr": true,
-          "host": true,
-          "proxyConfig": "apps/frontend/proxy.conf.json"
+          "host": true
         },
         "production": {
           "buildTarget": "frontend:build:production",

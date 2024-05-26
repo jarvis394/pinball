@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package multiplayer;
+
+service ColyseusService {
+  rpc QueueMatchmaking (QueueMatchmakingParams) returns (Reservation) {}
+}
+
+message QueueMatchmakingParams {
+  string userId = 1;
+  bool singleplayer = 2;
+}
+
+message Reservation {
+  string sessionId = 1;
+  RoomListing room = 2;
+}
+
+message RoomListing {
+  int32 clients = 1;
+  bool locked = 2;
+  bool private = 3;
+  int32 maxClients = 4;
+  string name = 5;
+  string publicAddress = 6;
+  string processId = 7;
+  string roomId = 8;
+  bool unlisted = 9;
+}

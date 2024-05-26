@@ -1,0 +1,34 @@
+{
+  "name": "engine",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/engine/src",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "@nx/js:swc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/engine",
+        "main": "libs/engine/src/index.ts",
+        "tsConfig": "libs/engine/tsconfig.lib.json",
+        "assets": ["libs/engine/*.md"]
+      }
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/engine/**/*.ts"]
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": ["tsc -p tsconfig.json --noEmit"],
+        "cwd": "libs/engine",
+        "forwardAllArgs": false
+      }
+    }
+  },
+  "tags": []
+}

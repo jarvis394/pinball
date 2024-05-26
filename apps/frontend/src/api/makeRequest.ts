@@ -17,7 +17,6 @@ export default async <T = never>({
   params,
   requestOptions,
 }: Arguments): Promise<T> => {
-  const baseUrl = import.meta.env.DEV ? '/api' : BACKEND_URL
   const headers = {
     Authorization: `Bearer ${window.location.search.split('?')[1]}`,
   }
@@ -25,7 +24,7 @@ export default async <T = never>({
   return (
     await axios({
       method: requestOptions?.method || 'get',
-      url: baseUrl + '/' + path,
+      url: BACKEND_URL + '/' + path,
       params,
       headers,
       ...requestOptions,

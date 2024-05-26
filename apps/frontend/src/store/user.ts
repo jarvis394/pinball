@@ -1,14 +1,12 @@
 import { PayloadAction, createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import { VKUserData } from '../models/ClientEnginePlayer'
 import { FetchingState } from '../types/FetchingState'
 import { getSelf } from '../api/user'
 import { User } from '@prisma/client'
 
 export interface UserState {
   data: User | null
-  bridgeData: {
-    fullname: string
-    avatarUrl: string
-  } | null
+  bridgeData: VKUserData | null
   status: FetchingState
   fetchError: string | null
   currentRequestId?: string

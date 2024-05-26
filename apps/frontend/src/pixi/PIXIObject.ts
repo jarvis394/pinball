@@ -1,15 +1,12 @@
 import * as PIXI from 'pixi.js'
 import Application from './Application'
-import { Engine } from '@pinball/shared'
 
 class PIXIObject extends PIXI.Container {
-  engine: Engine
-  app: PIXI.Application
+  app: Application
 
-  constructor(app: Application, engine: Engine) {
+  constructor(app: Application) {
     super()
     this.app = app
-    this.engine = engine
   }
 
   async init() {

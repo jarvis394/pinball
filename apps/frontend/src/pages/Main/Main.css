@@ -60,3 +60,9 @@
   margin: 0;
   opacity: 0.63;
 }
+
+.Main__buttonsContainer {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}

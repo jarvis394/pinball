@@ -17,6 +17,10 @@ const Main: React.FC = () => {
     navigate(routes.game.path)
   }
 
+  const handleNavigateToSingleplayerGame = () => {
+    navigate(routes.singleplayerGame.path)
+  }
+
   return (
     <div className="Main">
       <div className="Main__logoContainer">
@@ -27,21 +31,31 @@ const Main: React.FC = () => {
         <Avatar
           size={48}
           src={bridgeData?.avatarUrl}
-          initials={bridgeData?.fullname}
+          initials={bridgeData?.fullname.slice(0, 1)}
         />
         <div className="Main__userContent">
           <h1>{bridgeData?.fullname}</h1>
           <p>{user?.elo} ELO</p>
         </div>
       </div>
-      <Button
-        Component={'a'}
-        variant="primary"
-        fullWidth
-        onClick={handleNavigateToGame}
-      >
-        играть
-      </Button>
+      <div className="Main__buttonsContainer">
+        <Button
+          Component={'a'}
+          variant="default"
+          fullWidth
+          onClick={handleNavigateToSingleplayerGame}
+        >
+          одиночная игра
+        </Button>
+        <Button
+          Component={'a'}
+          variant="primary"
+          fullWidth
+          onClick={handleNavigateToGame}
+        >
+          играть
+        </Button>
+      </div>
     </div>
   )
 }

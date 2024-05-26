@@ -36,7 +36,7 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({ player, reverseRows }) => {
         <Avatar
           size={24}
           src={player.vkUserData?.avatarUrl}
-          initials={player.vkUserData?.fullname}
+          initials={player.vkUserData?.fullname.slice(0, 1)}
         />
         <h1>{player.vkUserData?.fullname}</h1>
         <p>{player.elo} ELO</p>

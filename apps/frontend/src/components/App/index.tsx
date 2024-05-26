@@ -3,7 +3,7 @@ import useMountEffect from '../../hooks/useMountEffect'
 import bridge from '@vkontakte/vk-bridge'
 import { ConfigProvider, AdaptivityProvider, AppRoot } from '@vkontakte/vkui'
 import { Outlet } from 'react-router-dom'
-import { APP_MAX_WIDTH } from '../../config/constants'
+import { APP_MAX_WIDTH, ENABLE_TEST_USER } from '../../config/constants'
 import { useAppDispatch, useAppSelector } from '../../store'
 import { fetchUserData, setUserBridgeData } from '../../store/user'
 import { FullScreenSpinner } from '../FullScreenSpinner'
@@ -21,25 +21,42 @@ const AppUnmemoized: React.FC = () => {
   }, [user])
 
   useMountEffect(() => {
-    bridge.send('VKWebAppInit')
+    bridge.send('VKWebAppInit').catch(() => {
+      console.warn(
+        'Cannot initialize VK app through bridge, probably working on localhost'
+      )
+    })
 
     const getUserData = async () => {
-      const userInfoResponse = await bridge.send('VKWebAppGetUserInfo')
+      try {
+        const userInfoResponse = await bridge.send('VKWebAppGetUserInfo')
 
+        dispatch(
+          setUserBridgeData({
+            fullname: [
+              userInfoResponse.first_name,
+              userInfoResponse.last_name,
+            ].join(' '),
+            avatarUrl: userInfoResponse.photo_200,
+          })
+        )
+      } catch (e) {
+        console.error('While trying to fetch VK user data:', e)
+      }
+    }
+
+    dispatch(fetchUserData())
+
+    if (ENABLE_TEST_USER) {
       dispatch(
         setUserBridgeData({
-          fullname: [
-            userInfoResponse.first_name,
-            userInfoResponse.last_name,
-          ].join(' '),
-          avatarUrl: userInfoResponse.photo_200,
+          fullname: 'Test User',
         })
       )
+      return
     }
 
     getUserData()
-
-    dispatch(fetchUserData())
   })
 
   return (

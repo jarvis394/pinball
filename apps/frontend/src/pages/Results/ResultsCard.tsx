@@ -1,6 +1,6 @@
 import React from 'react'
 import { ClientEnginePlayerJson } from '../../models/ClientEnginePlayer'
-import { GameResultsEloChange, GameResultsPlacement } from '@pinball/shared'
+import { GameResultsEloChange, GameResultsPlacement } from '@pinball/engine'
 import { Avatar, classNames as cx } from '@vkontakte/vkui'
 import formatWordByNumber from '../../utils/formatWordByNumber'
 import './ResultsCard.css'

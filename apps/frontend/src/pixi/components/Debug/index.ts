@@ -1,24 +1,41 @@
 import * as PIXI from 'pixi.js'
 import { PinballDebug } from './Pinball'
 import { ClientEngine } from '../../../models/ClientEngine'
+import { NetworkDebug } from './Network'
+import Application from '../../Application'
+import PIXIObject from '../../PIXIObject'
 
-export class Debug extends PIXI.Container {
-  pinballDebug: PinballDebug
+type PixiObjectAddChildFunction = (
+  ...children: PIXI.Container[]
+) => PIXI.Container
+
+export class Debug extends PIXIObject {
   clientEngine: ClientEngine
+  pinballDebug: PinballDebug
+  networkDebug: NetworkDebug
 
-  constructor(clientEngine: ClientEngine) {
-    super()
+  constructor(app: Application, clientEngine: ClientEngine) {
+    super(app)
     this.clientEngine = clientEngine
-    this.pinballDebug = new PinballDebug(clientEngine)
-
-    this.addChild(this.pinballDebug)
+    this.pinballDebug = new PinballDebug(app, clientEngine)
+    this.networkDebug = new NetworkDebug(app, clientEngine)
   }
 
-  init() {
+  addChildrenForViewport(addChild: PixiObjectAddChildFunction) {
+    addChild(this.pinballDebug)
+  }
+
+  addChildrenForScene(addChild: PixiObjectAddChildFunction) {
+    addChild(this.networkDebug)
+  }
+
+  override async init() {
     this.pinballDebug.init()
+    this.networkDebug.init()
   }
 
-  update() {
+  override update() {
     this.pinballDebug.update()
+    this.networkDebug.update()
   }
 }
