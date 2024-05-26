@@ -22,6 +22,7 @@ import {
   GameRoomState,
   generateSnapshot,
   SchemaEvent,
+  Snapshot,
 } from '@pinball/engine'
 import GameController from '../../controllers/GameController'
 import { User, PrismaClient, Prisma } from '@prisma/client'
@@ -181,6 +182,7 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
   }
 
   override onDispose() {
+    this.prismaClient.$disconnect()
     this.gameController.handleRoomDispose()
   }
 
@@ -211,6 +213,28 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
     const snapshots = this.gameController.update(delta)
     snapshots.forEach((snapshot) => {
       this.gameController.syncRoomStateBySnapshot(this.state, snapshot)
+    })
+  }
+
+  override onBeforePatch(): void {
+    this.gameController.players.forEach((player) => {
+      const snapshots: Snapshot[] = []
+      const client = this.clients.find((e) => e.id === player.clientId)
+      if (!client) return
+
+      for (
+        let frame = player.lastSentSnapshotFrame;
+        frame < player.engine.frame;
+        frame++
+      ) {
+        const currentSnapshot = player.engine.snapshots.vault.getByFrame(frame)
+        if (!currentSnapshot) break
+
+        snapshots.push(currentSnapshot)
+        player.lastSentSnapshotFrame = currentSnapshot.frame + 1
+      }
+
+      client.send(GameEventName.UPDATE, snapshots)
     })
   }
 

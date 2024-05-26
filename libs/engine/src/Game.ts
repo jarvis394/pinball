@@ -45,7 +45,7 @@ export class Game {
     )
   }
 
-  public handlePlayerLostRound = (playerId: string) => {
+  public handlePlayerLostRound(playerId: string) {
     const player = this.world.players.get(playerId)
     player && this.resetCurrentScore(player)
 
@@ -59,8 +59,10 @@ export class Game {
     )
   }
 
-  public handleActivateObjects = (labels: string[]) => {
+  public handleActivateObjects(labels: string[]) {
     if (!this.me) return
+
+    labels.forEach((label) => this.world.map?.activePaddles.add(label))
 
     this.events.push(
       new GameEvent(GameEventName.ACTIVATE_OBJECTS, {
@@ -73,8 +75,10 @@ export class Game {
     )
   }
 
-  public handleDeactivateObjects = (labels: string[]) => {
+  public handleDeactivateObjects(labels: string[]) {
     if (!this.me) return
+
+    labels.forEach((label) => this.world.map?.activePaddles.delete(label))
 
     this.events.push(
       new GameEvent(GameEventName.DEACTIVATE_OBJECTS, {
@@ -114,6 +118,15 @@ export class Game {
   public startGame() {
     this.hasStarted = true
     this.timeStarted = Engine.now()
+    this.events.push(
+      new GameEvent(GameEventName.GAME_STARTED, {
+        name: GameEventName.GAME_STARTED,
+        frame: this.engine.frame,
+        time: this.engine.frameTimestamp,
+        // TODO: fixme, should probably be a real value
+        players: {},
+      })
+    )
   }
 
   public addPoints(player: Player, points: number) {
@@ -150,6 +163,16 @@ export class Game {
 
   public endGame() {
     this.hasEnded = true
+    this.events.push(
+      new GameEvent(GameEventName.GAME_ENDED, {
+        name: GameEventName.GAME_ENDED,
+        frame: this.engine.frame,
+        time: this.engine.frameTimestamp,
+        // TODO: fixme, should probably be a real value
+        eloChange: {},
+        placements: [],
+      })
+    )
   }
 
   public flushEvents() {
@@ -157,7 +180,7 @@ export class Game {
   }
 
   public update() {
-    this.flushEvents()
+    // this.flushEvents()
     if (!this.hasStarted || this.hasEnded) return
 
     if (this.shouldEndGame()) {

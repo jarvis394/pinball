@@ -20,7 +20,7 @@ import MainLoop from 'mainloop.js'
 class GameMap {
   app: Application
   clientEngine: ClientEngine
-  root: PIXI.Graphics
+  root: PIXI.Container
   mask?: PIXI.Graphics
   graphicsObjects: Record<string, PIXI.Graphics>
   paddles: Map<string, { graphics: PIXI.Graphics; paddle: EnginePaddle }>
@@ -34,7 +34,7 @@ class GameMap {
     this.paddles = new Map()
     this.bumpers = new Map()
     this.activeBumpers = new Set()
-    this.root = new PIXI.Graphics()
+    this.root = new PIXI.Container()
   }
 
   drawMapMask() {
@@ -45,16 +45,15 @@ class GameMap {
     }
 
     return new PIXI.Graphics()
-      .beginFill(0xffffff)
-      .drawRoundedRect(0, 0, map.data.bounds.x, map.data.bounds.y, 1000)
-      .drawRoundedRect(
+      .roundRect(0, 0, map.data.bounds.x, map.data.bounds.y, 1000)
+      .roundRect(
         0,
         map.data.bounds.y / 2,
         map.data.bounds.x,
         map.data.bounds.y / 2,
         16
       )
-      .endFill()
+      .fill(0xffffff)
   }
 
   drawShapeFromGenericData(
@@ -64,7 +63,7 @@ class GameMap {
   ) {
     switch (object.data.type) {
       case 'circle':
-        graphics.drawCircle(
+        graphics.circle(
           object.data.radius,
           object.data.radius,
           object.data.radius
@@ -72,7 +71,7 @@ class GameMap {
         break
       case 'rectangle':
         if (object.data.chamferRadius) {
-          graphics.drawRoundedRect(
+          graphics.roundRect(
             0,
             0,
             object.data.width,
@@ -80,7 +79,7 @@ class GameMap {
             object.data.chamferRadius
           )
         } else {
-          graphics.drawRect(0, 0, object.data.width, object.data.height)
+          graphics.rect(0, 0, object.data.width, object.data.height)
         }
         break
       default:
@@ -101,7 +100,7 @@ class GameMap {
       ...new Map(points.map((v) => [JSON.stringify(v), v])).values(),
     ]
 
-    graphics.drawPolygon(filteredPoints)
+    graphics.poly(filteredPoints)
     graphics.position.set(
       fieldObject.data.position.x,
       fieldObject.data.position.y
@@ -113,7 +112,7 @@ class GameMap {
     object: GameMapObjectBaseVertices,
     fieldObject: GameMapFieldObject
   ) {
-    graphics.drawPolygon(object.data.points)
+    graphics.poly(object.data.points)
     graphics.position.set(
       fieldObject.data.position.x,
       fieldObject.data.position.y
@@ -127,9 +126,10 @@ class GameMap {
       throw new Error('No map loaded when trying to render GameMap in PIXI')
     }
 
-    this.root.beginFill(map.data.backgroundFill)
-    this.root.drawRect(0, 0, map.data.bounds.x, map.data.bounds.y)
-    this.root.endFill()
+    const background = new PIXI.Graphics()
+      .rect(0, 0, map.data.bounds.x, map.data.bounds.y)
+      .fill(map.data.backgroundFill)
+    this.root.addChild(background)
 
     map.data.field.forEach((fieldObject) => {
       const object = map.objects[fieldObject.objectId]
@@ -141,9 +141,7 @@ class GameMap {
         )
       }
 
-      if (fieldObject.data.fill) {
-        graphics.beginFill(fieldObject.data.fill, fieldObject.data.alpha)
-      }
+      graphics.label = object.id
 
       switch (object.parseType) {
         case GameMapParseType.GENERIC: {
@@ -162,8 +160,19 @@ class GameMap {
           return exhaustivnessCheck(object)
       }
 
+      if (fieldObject.data.fill) {
+        graphics.fill({
+          color: fieldObject.data.fill,
+          alpha: fieldObject.data.alpha || 1,
+        })
+      }
+
       if (object.objectType === GameMapObjectType.PADDLE) {
         graphics.pivot.set(object.anchor.x, object.anchor.y)
+      }
+
+      if (fieldObject.data.angleDegrees) {
+        graphics.angle = fieldObject.data.angleDegrees
       }
 
       graphics.position.set(
@@ -171,25 +180,17 @@ class GameMap {
         fieldObject.data.position.y
       )
 
-      if (fieldObject.data.angleDegrees) {
-        graphics.angle = fieldObject.data.angleDegrees
-      }
+      this.root.addChild(graphics)
+      this.graphicsObjects[fieldObject.label] = graphics
 
       if (fieldObject.data.scale) {
         const { x, y } = fieldObject.data.scale
         graphics.scale.set(x, y)
         graphics.position.set(
-          fieldObject.data.position.x + graphics.width * (x === 1 ? 0 : x),
-          fieldObject.data.position.y + graphics.height * (y === 1 ? 0 : y)
+          fieldObject.data.position.x - graphics.width * (x === 1 ? 0 : x),
+          fieldObject.data.position.y - graphics.height * (y === 1 ? 0 : y)
         )
       }
-
-      if (fieldObject.data.fill) {
-        graphics.endFill()
-      }
-
-      this.graphicsObjects[fieldObject.label] = graphics
-      this.root.addChild(graphics)
 
       if (object.objectType === GameMapObjectType.PADDLE) {
         this.paddles.set(fieldObject.label, {
@@ -209,7 +210,7 @@ class GameMap {
     this.mask = this.drawMapMask()
     this.root.mask = this.mask
 
-    this.clientEngine.engine.game.world.addEventListener(
+    this.clientEngine.reconciliationEngine.game.world.addEventListener(
       WorldEvents.BUMPER_HIT,
       ({ fieldObject }) => {
         const bumper = this.bumpers.get(fieldObject.label)

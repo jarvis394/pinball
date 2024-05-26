@@ -1,6 +1,7 @@
 import { MapSchema, Schema, type } from '@colyseus/schema'
 import { GameEventName } from './GameEvent'
 import { GameMapName } from '@pinball/shared'
+import { Engine } from './Engine'
 
 export class SchemaVector extends Schema {
   @type('float64') x: number
@@ -61,6 +62,7 @@ export class SchemaEvent extends Schema {
 export class GameRoomState extends Schema {
   @type('int64') frame = 0
   @type('int64') timestamp = 0
+  @type('float32') lastDelta = Engine.MIN_DELTA
   @type('string') mapName: GameMapName
   @type([SchemaEvent]) events: SchemaEvent[] = []
   @type({ map: SchemaPlayer }) players: MapSchema<SchemaPlayer, string> =

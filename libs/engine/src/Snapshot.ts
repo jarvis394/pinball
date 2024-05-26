@@ -4,6 +4,12 @@ import { GameMapName } from '@pinball/shared'
 import { Engine } from './Engine'
 import { GameEventName } from './GameEvent'
 
+/**
+ * Maximum distance between two snapshot entities when `areSnapshotsClose`
+ * function starts to consider them as reconcile errors
+ */
+const MAX_SNAPSHOT_DIFFERENCE_ERROR = 4
+
 export type SnapshotPinball = Entity<{
   id: string
   playerId: string
@@ -19,6 +25,7 @@ export type SnapshotEvent = {
 }
 
 export interface Snapshot extends BaseSnapshot {
+  lastDelta: number
   mapName: GameMapName
   playerId: string
   playerScore: number
@@ -42,7 +49,22 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
   }
 
   if (!player) {
-    throw new Error('generateSnapshot: No local player is set')
+    // throw new Error('generateSnapshot: No local player is set')
+    return {
+      frame: engine.frame,
+      timestamp: Date.now(),
+      lastDelta: engine.lastDelta,
+      mapName: engine.game.world.mapName,
+      playerId: '',
+      playerScore: 0,
+      playerHighScore: 0,
+      playerCurrentScore: 0,
+      mapActiveObjects,
+      events,
+      state: {
+        pinballs,
+      },
+    }
   }
 
   engine.game.world.pinballs.forEach((pinball) => {
@@ -70,6 +92,7 @@ export const generateSnapshot = (engine: Engine): Snapshot => {
   return {
     frame: engine.frame,
     timestamp: Date.now(),
+    lastDelta: engine.lastDelta,
     mapName: engine.game.world.mapName,
     playerId: player.id,
     playerScore: player.score,
@@ -180,7 +203,7 @@ export const areSnapshotsClose = (snapshotA: Snapshot, snapshotB: Snapshot) => {
       )
     )
 
-    if (error > 1) {
+    if (error > MAX_SNAPSHOT_DIFFERENCE_ERROR) {
       result = false
       break
     }

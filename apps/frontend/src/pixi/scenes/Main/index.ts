@@ -1,4 +1,4 @@
-import { Engine, WorldEvents } from '@pinball/engine'
+import { WorldEvents } from '@pinball/engine'
 import { ClientEngine, ClientEngineEvents } from '../../../models/ClientEngine'
 import Application from '../../Application'
 import PIXIObject from '../../PIXIObject'
@@ -13,10 +13,10 @@ import {
   ENABLE_DEBUG_OVERLAY,
   ENABLE_TEST_USER,
 } from '../../../config/constants'
+import { DestroyOptions } from 'pixi.js'
 
 type MainSceneProps = {
   app: Application
-  engine: Engine
   localVKUserData?: VKUserData
 }
 
@@ -30,21 +30,21 @@ class MainScene extends PIXIObject {
   timer: Timer
   debugOverlay?: Debug
 
-  constructor({ app, engine, localVKUserData }: MainSceneProps) {
-    super(app, engine)
+  constructor({ app, localVKUserData }: MainSceneProps) {
+    super(app)
     this.userId = this.getUserId()
-    this.viewport = new Viewport(app, engine)
-    this.clientEngine = new ClientEngine(engine, this.userId, localVKUserData)
+    this.clientEngine = new ClientEngine(this.userId, localVKUserData)
+    this.viewport = new Viewport(app, this.clientEngine)
     this.gameMap = new GameMap(app, this.clientEngine)
-    this.currentScore = new CurrentScore(engine)
-    this.timer = new Timer(engine)
+    this.currentScore = new CurrentScore(this.clientEngine)
+    this.timer = new Timer(app, this.clientEngine)
     this.pinballs = new Map()
 
     this.viewport.addChild(this.gameMap.root)
     this.viewport.addChild(this.currentScore)
 
     if (ENABLE_DEBUG_OVERLAY) {
-      this.debugOverlay = new Debug(this.clientEngine)
+      this.debugOverlay = new Debug(this.app, this.clientEngine)
       this.debugOverlay.addChildrenForViewport(
         this.viewport.addChild.bind(this.viewport)
       )
@@ -109,17 +109,17 @@ class MainScene extends PIXIObject {
     this.viewport.addChild(pixiPinball)
   }
 
-  handleInitRoom() {
+  async handleInitRoom() {
     if (!this.clientEngine.engine.game.world.map) {
       throw new Error('No map loaded when trying to init room in PIXI')
     }
 
     this.gameMap.init()
     this.gameMap.mask && this.viewport.addChild(this.gameMap.mask)
-    this.debugOverlay?.init()
     this.currentScore.init()
-    this.timer.init()
     this.viewport.init()
+    await this.debugOverlay?.init()
+    await this.timer.init()
   }
 
   override update(interpolation: number) {
@@ -134,6 +134,12 @@ class MainScene extends PIXIObject {
     this.currentScore.update()
     this.timer.update()
     this.debugOverlay?.update()
+    this.viewport.update()
+  }
+
+  override destroy(options?: DestroyOptions | undefined): void {
+    this.clientEngine.destroy()
+    super.destroy(options)
   }
 }
 

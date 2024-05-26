@@ -1,6 +1,9 @@
 {
-  "extends": ["../../.eslintrc.json"],
+  "extends": ["../../.eslintrc.json", "plugin:deprecation/recommended"],
   "ignorePatterns": ["!**/*"],
+  "parserOptions": {
+    "project": "tsconfig.base.json"
+  },
   "overrides": [
     {
       "files": ["*.ts", "*.tsx", "*.js", "*.jsx"],

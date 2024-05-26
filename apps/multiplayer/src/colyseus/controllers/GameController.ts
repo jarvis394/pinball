@@ -6,9 +6,7 @@ import {
   GameRoomState,
   SchemaPlayer,
   Snapshot,
-  generateSnapshot,
 } from '@pinball/engine'
-import { SnapshotInterpolation } from 'snapshot-interpolation'
 import { Client } from '../rooms/game'
 
 class GamePlayer {
@@ -16,16 +14,13 @@ class GamePlayer {
   clientId: string
   engine: Engine
   map: GameMapData
-  snapshotInterpolation: SnapshotInterpolation<Snapshot>
+  lastSentSnapshotFrame: number = 1
 
   constructor(id: string, clientId: string, map: GameMapData) {
     this.id = id
     this.clientId = clientId
     this.map = map
     this.engine = new Engine()
-    this.snapshotInterpolation = new SnapshotInterpolation({
-      vaultSize: 100,
-    })
   }
 
   init() {
@@ -84,14 +79,13 @@ class GameController {
     this.roomId = roomId
   }
 
-  update(delta: number): Snapshot[] {
-    const snapshots: Snapshot[] = []
+  update(delta: number): Map<Player['id'], Snapshot> {
+    const snapshots: Map<Player['id'], Snapshot> = new Map()
 
     this.players.forEach((player) => {
-      player.engine.update(delta)
-      const snapshot = generateSnapshot(player.engine)
-      snapshots.push(snapshot)
-      player.snapshotInterpolation.addSnapshot(snapshot)
+      const snapshot = player.engine.update(delta)
+      player.engine.game.flushEvents()
+      snapshot && snapshots.set(player.id, snapshot)
     })
 
     return snapshots
@@ -100,6 +94,7 @@ class GameController {
   syncRoomStateBySnapshot(state: GameRoomState, snapshot: Snapshot) {
     state.frame = Number(snapshot.frame)
     state.timestamp = snapshot.timestamp
+    state.lastDelta = snapshot.lastDelta
 
     let player = state.players.get(snapshot.playerId)
 
@@ -185,9 +180,7 @@ class GameController {
       return
     }
 
-    labels.forEach((label) => {
-      player.engine.game.world.map?.activePaddles.add(label)
-    })
+    player.engine.game.world.handleActivateObjects(labels)
   }
 
   handleDeactivateObjects(client: Client, labels: string[]) {
@@ -202,9 +195,7 @@ class GameController {
       return
     }
 
-    labels.forEach((label) => {
-      player.engine.game.world.map?.activePaddles.delete(label)
-    })
+    player.engine.game.world.handleDeactivateObjects(labels)
   }
 }
 

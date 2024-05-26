@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import Application from '../../pixi/Application'
 import useMountEffect from '../../hooks/useMountEffect'
-import { Engine, GameRoomState } from '@pinball/engine'
+import { GameRoomState } from '@pinball/engine'
 import MainLoop from 'mainloop.js'
 import MainScene from '../../pixi/scenes/Main'
 import * as Colyseus from 'colyseus.js'
@@ -28,6 +28,7 @@ import { Button } from '../../components/Button'
 import './Game.css'
 
 export const PIXI_CANVAS_CONTAINER_ID = 'pixi-container'
+export const PIXI_CANVAS_ID = 'pixi-canvas'
 export const MATTER_CANVAS_ID = 'matter-canvas'
 
 type GameProps = {
@@ -48,7 +49,7 @@ const Game: React.FC<GameProps> = ({ singleplayer }) => {
   const [room, setRoom] = useState<Colyseus.Room<GameRoomState>>()
   const dispatch = useAppDispatch()
   const canvasContainer = useRef<HTMLDivElement>(null)
-  const engine = useRef<Engine>()
+  const canvasElement = useRef<HTMLCanvasElement>(null)
   const app = useRef<Application>()
   const scene = useRef<MainScene>()
   const [opponentPlayer, setOpponentPlayer] = useState<ClientEnginePlayerJson>()
@@ -90,11 +91,10 @@ const Game: React.FC<GameProps> = ({ singleplayer }) => {
 
   // Creates PIXI scene
   useEffect(() => {
-    if (!room || !app.current || !engine.current) return
+    if (!room || !app.current) return
 
     scene.current = new MainScene({
       app: app.current,
-      engine: engine.current,
       localVKUserData: bridgeData || undefined,
     })
 
@@ -132,30 +132,39 @@ const Game: React.FC<GameProps> = ({ singleplayer }) => {
     })
 
     return () => {
+      MainLoop.stop()
       scene.current?.clientEngine.destroy()
-      scene.current?.destroy()
+      scene.current?.viewport.disconnectResizeObserver()
+      scene.current?.destroy(true)
       room?.connection?.isOpen && room?.leave(true)
     }
   }, [client, updatePlayerData, room, handleGameEndEvent, bridgeData])
 
   // Creates engine and PIXI application
   useMountEffect(() => {
-    engine.current = new Engine()
+    const start = async () => {
+      if (!canvasContainer.current) {
+        throw new Error('No pixi canvas container found in DOM')
+      }
 
-    if (!canvasContainer.current) {
-      throw new Error('No pixi canvas container found in DOM')
+      if (!canvasElement.current) {
+        throw new Error('No pixi canvas found in DOM')
+      }
+
+      app.current = new Application(canvasContainer.current)
+      await app.current?.initApplication({
+        canvas: canvasElement.current,
+      })
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error Need better typings for window object, rewrite
+      // Used for PIXI debugging extension
+      window.__PIXI_APP__ = app.current
     }
 
-    app.current = new Application(canvasContainer.current)
-
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error Need better typings for window object, rewrite
-    // Used for PIXI debugging extension
-    window.__PIXI_APP__ = app.current
+    start()
 
     return () => {
-      engine.current?.destroy()
-      scene.current?.viewport.destroy()
       app.current?.destroy(true)
     }
   })
@@ -173,6 +182,7 @@ const Game: React.FC<GameProps> = ({ singleplayer }) => {
       return
 
     const consumeReservation = async () => {
+      console.log('Reserved seat in room:', reservation)
       const res = await client.current.consumeSeatReservation<GameRoomState>(
         reservation
       )
@@ -199,6 +209,11 @@ const Game: React.FC<GameProps> = ({ singleplayer }) => {
         className="Game__pixiContainer"
         ref={canvasContainer}
       >
+        <canvas
+          ref={canvasElement}
+          id={PIXI_CANVAS_ID}
+          className="Game__pixiCanvas"
+        />
         <canvas id={MATTER_CANVAS_ID} className="Game__matterCanvas" />
       </div>
       <PlayerInfo reverseRows player={localPlayer} />

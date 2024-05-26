@@ -2,7 +2,7 @@ import Matter from 'matter-js'
 import Loop from 'mainloop.js'
 import { Game } from './Game'
 import { SnapshotInterpolation } from 'snapshot-interpolation'
-import { Snapshot } from './Snapshot'
+import { Snapshot, generateSnapshot } from './Snapshot'
 
 export class Engine {
   static SNAPSHOTS_VAULT_SIZE = 200
@@ -43,14 +43,21 @@ export class Engine {
     Matter.Resolver._restingThresh = 0.001
   }
 
-  public update(delta: number) {
-    if (!this.game.hasStarted || this.game.hasEnded) return
+  public update(delta: number): Snapshot | false {
+    if (!this.game.hasStarted || this.game.hasEnded) {
+      return false
+    }
 
     Matter.Engine.update(this.matterEngine, delta)
     this.game.update()
     this.frame += 1
     this.frameTimestamp = Engine.now()
     this.lastDelta = delta
+
+    const snapshot = generateSnapshot(this)
+    this.snapshots.addSnapshot(snapshot)
+
+    return snapshot
   }
 
   public start() {

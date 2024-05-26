@@ -1,60 +1,98 @@
-import { Pinball, Snapshot, SnapshotPinball } from '@pinball/engine'
+import { Pinball, Snapshot, WorldEvents } from '@pinball/engine'
 import { ClientEngine } from '../../../models/ClientEngine'
 import * as PIXI from 'pixi.js'
+import Application from '../../Application'
+import PIXIObject from '../../PIXIObject'
 
-export class PinballDebug extends PIXI.Container {
+export class PinballDebug extends PIXIObject {
   clientEngine: ClientEngine
-  pinballs: Map<string, PIXI.Graphics>
+  pinballs: Map<string, PIXI.Container>
 
-  constructor(clientEngine: ClientEngine) {
-    super()
+  constructor(app: Application, clientEngine: ClientEngine) {
+    super(app)
     this.clientEngine = clientEngine
     this.pinballs = new Map()
+
+    this.clientEngine.engine.game.world.addEventListener(
+      WorldEvents.PINBALL_SPAWN,
+      (pinballId) => {
+        const enginePinball =
+          this.clientEngine.engine.game.world.pinballs.get(pinballId)
+        if (!enginePinball) return
+
+        this.addPinball(enginePinball, 'engine')
+      }
+    )
+    this.clientEngine.engine.game.world.addEventListener(
+      WorldEvents.PINBALL_SPAWN,
+      (pinballId) => {
+        const enginePinball =
+          this.clientEngine.engine.game.world.pinballs.get(pinballId)
+        if (!enginePinball) return
+
+        this.addPinball(enginePinball, 'localEngine')
+      }
+    )
   }
 
-  init() {}
-
-  addPinball(snapshotPinball: SnapshotPinball, enginePinball: Pinball) {
+  addPinball(enginePinball: Pinball, label?: string) {
+    const id = `${enginePinball.id}${label ? '_' + label : ''}`
+    const container = new PIXI.Container()
     const pixiPinball = new PIXI.Graphics()
-      .lineStyle(4, 'ff0000', 0.5)
-      .drawCircle(0, 0, enginePinball.data.radius)
-    pixiPinball.zIndex = 100
-    pixiPinball.name = snapshotPinball.id
-    this.pinballs.set(snapshotPinball.id, pixiPinball)
-    this.addChild(pixiPinball)
+      .circle(0, 0, enginePinball.data.radius)
+      .stroke({
+        width: 4,
+        color: new PIXI.Color({ h: Math.random() * 360, s: 100, l: 50 }),
+        alpha: 0.5,
+      })
+    const text = new PIXI.Text({
+      text: id,
+      style: new PIXI.TextStyle({
+        fill: 0xffffff,
+        fontSize: 12,
+        stroke: {
+          width: 2,
+          color: 0x000000,
+        },
+      }),
+    })
+
+    text.position.set(-text.width / 2, -text.height / 2)
+
+    container.zIndex = 100
+    container.label = id
+    this.pinballs.set(id, container)
+    container.addChild(pixiPinball)
+    container.addChild(text)
+    this.addChild(container)
 
     return pixiPinball
   }
 
-  update() {
+  override update() {
     const snapshot = this.clientEngine.engine.snapshots.vault.getLast() as
       | Snapshot
       | undefined
     if (!snapshot) return
 
     snapshot.state.pinballs.forEach((snapshotPinball) => {
-      const enginePinball = this.clientEngine.engine.game.world.pinballs.get(
-        snapshotPinball.id
-      )
-      let pixiPinball = this.pinballs.get(snapshotPinball.id)
+      const pixiPinball = this.pinballs.get(snapshotPinball.id + '_engine')
+      if (!pixiPinball) return
 
-      if (!pixiPinball && enginePinball) {
-        pixiPinball = this.addPinball(snapshotPinball, enginePinball)
-      }
-
-      pixiPinball?.position.set(
+      pixiPinball.position.set(
         snapshotPinball.positionX,
         snapshotPinball.positionY
       )
     })
 
-    // Remove deleted pinballs
-    this.children.forEach((pinball, i) => {
-      if (!pinball.name) return
-      if (snapshot.state.pinballs.some((e) => e.id === pinball.name)) return
+    this.clientEngine.engine.game.world.pinballs.forEach((enginePinball) => {
+      const pixiPinball = this.pinballs.get(enginePinball.id + '_localEngine')
+      if (!pixiPinball) return
 
-      this.pinballs.delete(pinball.name)
-      this.removeChildAt(i)
+      pixiPinball.position.set(
+        enginePinball.body.position.x,
+        enginePinball.body.position.y
+      )
     })
   }
 }
