@@ -103,7 +103,7 @@ class MainScene extends PIXIObject {
       )
     }
 
-    const pixiPinball = new Pinball(enginePinball)
+    const pixiPinball = new Pinball(this.app, enginePinball)
     this.pinballs.set(pinballId, pixiPinball)
     pixiPinball.init()
     this.viewport.addChild(pixiPinball)

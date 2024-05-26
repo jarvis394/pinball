@@ -40,7 +40,7 @@ export class NetworkPingDebug extends PIXIObject {
       this.alpha = lerp(
         this.alpha,
         1,
-        (Engine.MIN_DELTA / this.app.ticker.deltaMS) * 0.01
+        (this.app.ticker.deltaMS / Engine.MIN_DELTA) * 0.1
       )
     } else {
       this.alpha = 0
