@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js'
 import { ClientEngine } from '../../models/ClientEngine'
 
-class CurrentScore extends PIXI.Graphics {
+class CurrentScore extends PIXI.Container {
   public static FONT_SIZE = 96
 
   clientEngine: ClientEngine

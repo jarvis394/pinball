@@ -21,6 +21,26 @@ services:
     command: sh -c "yarn prisma migrate deploy && node dist/main.js"
     restart: on-failure
 
+  multiplayer:
+    build:
+      context: ./
+      dockerfile: Dockerfile.multiplayer
+      target: production
+    tty: true
+    env_file:
+      - .env
+    expose:
+      - '${BACKEND_PORT}'
+      - '${MULTIPLAYER_PORT}'
+    ports:
+      - '${BACKEND_PORT}:${BACKEND_PORT}'
+      - '${MULTIPLAYER_PORT}:${MULTIPLAYER_PORT}'
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "yarn prisma migrate deploy && node dist/main.js"
+    restart: on-failure
+
   frontend:
     profiles: ['frontend']
     build:
@@ -37,7 +57,7 @@ services:
 
   db:
     image: postgres:16-alpine
-    container_name: postgres
+    container_name: pinball-postgres
     environment:
       # Remember to change those to secure vault parameters!
       - POSTGRES_USER=postgres
@@ -54,7 +74,7 @@ services:
       retries: 10
 
   pgadmin:
-    container_name: pgadmin
+    container_name: pinball-pgadmin
     depends_on:
       - db
     image: dpage/pgadmin4

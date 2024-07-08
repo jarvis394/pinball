@@ -10,7 +10,7 @@ COPY yarn.lock .
 RUN yarn
 
 COPY apps/frontend ./apps/frontend
-COPY apps/shared ./apps/shared
+COPY libs ./libs
 COPY tsconfig.base.json ./tsconfig.base.json
 COPY .env ./.env
 COPY nx.json ./nx.json

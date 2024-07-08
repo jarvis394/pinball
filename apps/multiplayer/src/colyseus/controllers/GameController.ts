@@ -6,6 +6,8 @@ import {
   GameRoomState,
   SchemaPlayer,
   Snapshot,
+  ActivateObjectsMessageData,
+  DeactivateObjectsMessageData,
 } from '@pinball/engine'
 import { Client } from '../rooms/game'
 
@@ -38,15 +40,18 @@ class GamePlayer {
   }
 
   setScore(score: number) {
-    this.engine.game.me!.score = score
+    if (!this.engine.game.me) return
+    this.engine.game.me.score = score
   }
 
   setCurrentScore(score: number) {
-    this.engine.game.me!.currentScore = score
+    if (!this.engine.game.me) return
+    this.engine.game.me.currentScore = score
   }
 
   setHighScore(score: number) {
-    this.engine.game.me!.highScore = score
+    if (!this.engine.game.me) return
+    this.engine.game.me.highScore = score
   }
 }
 
@@ -170,7 +175,7 @@ class GameController {
     this.players.clear()
   }
 
-  handleActivateObjects(client: Client, labels: string[]) {
+  handleActivateObjects(client: Client, data: ActivateObjectsMessageData) {
     const userId = client.userData?.userId
     if (!userId) return
 
@@ -180,10 +185,10 @@ class GameController {
       return
     }
 
-    player.engine.game.world.handleActivateObjects(labels)
+    player.engine.game.world.handleActivateObjects(data)
   }
 
-  handleDeactivateObjects(client: Client, labels: string[]) {
+  handleDeactivateObjects(client: Client, data: DeactivateObjectsMessageData) {
     const userId = client.userData?.userId
     if (!userId) return
 
@@ -195,7 +200,7 @@ class GameController {
       return
     }
 
-    player.engine.game.world.handleDeactivateObjects(labels)
+    player.engine.game.world.handleDeactivateObjects(data)
   }
 }
 
