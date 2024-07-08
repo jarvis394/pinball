@@ -30,6 +30,9 @@ import {
   restoreEngineFromSnapshot,
   areSnapshotsClose,
   SchemaPlayer,
+  GameEventWithLocalId,
+  DeactivateObjectsMessageData,
+  ActivateObjectsMessageData,
 } from '@pinball/engine'
 import { SnapshotInterpolation } from 'snapshot-interpolation'
 
@@ -80,12 +83,19 @@ enum ClientInputActionKeyCodes {
   SPACE = 'Space',
 }
 
-// TODO: Rewrite event system so events are stored in a queue from all snapshots received from server
 export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   private static PADDLE_LEFT_LABEL = 'paddle_bottom_left'
   private static PADDLE_RIGHT_LABEL = 'paddle_bottom_right'
 
+  /**
+   * Local engine which is used to render game field
+   * Handles user input instantaneously
+   */
   reconciliationEngine: Engine
+  /**
+   * Engine which is updated by server events and used
+   * as a source of truth when reconciling
+   */
   engine: Engine
   serverSnapshots: SnapshotInterpolation<Snapshot>
   client?: Colyseus.Client
@@ -96,13 +106,15 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   keysReleased: Set<string> = new Set()
   heldKeys: Set<string> = new Set()
   players: Map<string, ClientEnginePlayer> = new Map()
-  /** Events that are executed on snapshots sync (ClientEngine.update)  */
-  // deferredEvents: SnapshotEvent[] = []
   localVKUserData?: VKUserData
   /** Changed to true after GameEvent.GAME_INIT event from server */
   isGameInitialized = false
   /** Queue for storing all events (including deferred events) */
   pendingEvents: SnapshotEvent[] = []
+  /** Map for events that have pending confirmation from server via snapshot events */
+  unconfirmedEvents: Map<Snapshot['frame'], SnapshotEvent[]> = new Map()
+  /** Used for uniquely identifying events which is useful for event confirmation */
+  lastEventId: number = -1
 
   constructor(userId: string | null, localVKUserData?: VKUserData) {
     super()
@@ -215,10 +227,10 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
     snapshots.forEach((snapshot) => {
       this.serverSnapshots.addSnapshot(snapshot)
-      this.pendingEvents.concat(snapshot.events)
+      this.pendingEvents = [...this.pendingEvents, ...snapshot.events]
     })
 
-    const lastSnapshot = snapshots.at(-1)
+    const lastSnapshot = this.serverSnapshots.vault.getLast()
     if (!lastSnapshot) return
 
     // Update players statistics for React<->ClientEngine compatibility
@@ -318,7 +330,8 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
     if (!currentPlayerSnapshot) {
       console.warn(
-        `[reconcile ${serverSnapshot.frame}] Cannot find snapshot in client vault closest to time ${currentTime}`
+        `[reconcile ${serverSnapshot.frame}] Cannot find snapshot ` +
+          `in client vault closest to time ${currentTime}`
       )
       return
     }
@@ -359,32 +372,32 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
 
       if (!currentPlayerSnapshot) {
         console.warn(
-          `[reconcile ${serverSnapshot.frame}] Cannot find snapshot in client vault closest to time ${currentTime} (inside loop)`
+          `[reconcile ${serverSnapshot.frame}] Cannot find snapshot in ` +
+            `client vault closest to time ${currentTime} (inside loop)`
         )
         currentTime += Engine.MIN_DELTA
         this.reconciliationEngine.update(Engine.MIN_DELTA)
         continue
       }
 
-      currentPlayerSnapshot.events.forEach((event) => {
-        const data = JSON.parse(event.data || '')
+      const currentFrameUnconfirmedEvents = this.unconfirmedEvents.get(
+        currentPlayerSnapshot.frame
+      )
 
+      currentFrameUnconfirmedEvents?.forEach((event) => {
         switch (event.event) {
           case GameEventName.ACTIVATE_OBJECTS: {
-            const typedEventData = data as ActivateObjectsEventData
-            console.log('activate objects', typedEventData)
-            this.changeObjectsStateInEngine(typedEventData.labels, 'activate')
+            const data = parseData<ActivateObjectsEventData>(event.data || '')
+            data && this.reconciliationEngine.game.handleActivateObjects(data)
             break
           }
           case GameEventName.DEACTIVATE_OBJECTS: {
-            const typedEventData = data as DeactivateObjectsEventData
-            console.log('deactivate objects', typedEventData)
-            this.changeObjectsStateInEngine(typedEventData.labels, 'deactivate')
+            const data = parseData<DeactivateObjectsEventData>(event.data || '')
+            data && this.reconciliationEngine.game.handleDeactivateObjects(data)
             break
           }
           case GameEventName.PLAYER_LOST_ROUND: {
-            console.log('lose round')
-            this.handlePlayerLostRoundEvent(data)
+            this.handlePlayerLostRoundEvent(event.data)
             break
           }
         }
@@ -407,6 +420,41 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     )
   }
 
+  confirmSnapshotEvent(event: SnapshotEvent) {
+    console.log('Trying to confirm event:', event)
+
+    // Cannot happen as we only provide events with type GameEventWithLocalId
+    if (!event.data) {
+      return
+    }
+
+    const data = parseData<GameEventWithLocalId>(event.data)
+    if (!data) {
+      console.warn('Could not parse data for event, skipping...')
+      return
+    }
+
+    const events = this.unconfirmedEvents.get(data.fromLocalFrame)
+    if (!events) {
+      console.warn('No unconfirmed events found on frame', data.fromLocalFrame)
+      return
+    }
+
+    const removeIndex = events.findIndex((e) => e.event === event.event)
+    events.splice(removeIndex, 1)
+
+    if (events.length === 0) {
+      this.unconfirmedEvents.delete(data.fromLocalFrame)
+    }
+
+    console.log('Confirmed event:', data)
+  }
+
+  getNewEventId() {
+    this.lastEventId++
+    return this.lastEventId
+  }
+
   handleBeforeUpdate(event: BeforeUpdateEvent) {
     this.handlePressedKeys()
     this.handleReleasedKeys()
@@ -427,10 +475,12 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   processSnapshotEvent(event: SnapshotEvent) {
     switch (event.event) {
       case GameEventName.UPDATE:
-      case GameEventName.ACTIVATE_OBJECTS:
-      case GameEventName.DEACTIVATE_OBJECTS:
       case GameEventName.PLAYER_PINBALL_REDEPLOY:
       case GameEventName.PLAYER_LOST_ROUND:
+        break
+      case GameEventName.ACTIVATE_OBJECTS:
+      case GameEventName.DEACTIVATE_OBJECTS:
+        this.confirmSnapshotEvent(event)
         break
       // We handle these events separately in constructor of ClientEngine
       // Events below are sent by server via regular send method, not with snapshot
@@ -519,7 +569,8 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
     if (this.userId === schemaPlayer.id) {
       engine.game.setMe(player)
 
-      // note: This applies only for pinball game as we cannot add external pinballs to a game
+      // NOTE: This applies only for pinball game as we
+      // cannot add external pinballs to a game
       schemaPlayer.map.pinballs.forEach((schemaPinball) => {
         const pinball = engine.game.world.addPinballForPlayer(
           schemaPinball.id,
@@ -614,61 +665,79 @@ export class ClientEngine extends EventEmitter<ClientEngineEmitterEvents> {
   }
 
   handleActivateObjects(labels: string[]) {
-    this.room?.send(GameEventName.ACTIVATE_OBJECTS, labels)
-    this.changeObjectsStateInEngine(labels, 'activate')
+    if (!this.room || !this.room.connection.isOpen) {
+      console.warn('handleActivateObjects: connection to room is closed')
+      return
+    }
+
+    const data: ActivateObjectsMessageData = {
+      labels,
+      fromLocalFrame: this.reconciliationEngine.frame,
+      localEventId: this.getNewEventId(),
+    }
+
+    this.room.send(GameEventName.ACTIVATE_OBJECTS, data)
+    this.changeObjectsStateInEngine(data, 'activate')
   }
 
   handleDeactivateObjects(labels: string[]) {
-    this.room?.send(GameEventName.DEACTIVATE_OBJECTS, labels)
-    this.changeObjectsStateInEngine(labels, 'deactivate')
+    if (!this.room || !this.room.connection.isOpen) {
+      console.warn('handleDeactivateObjects: connection to room is closed')
+      return
+    }
+
+    const data: DeactivateObjectsMessageData = {
+      labels,
+      fromLocalFrame: this.reconciliationEngine.frame,
+      localEventId: this.getNewEventId(),
+    }
+
+    this.room.send(GameEventName.DEACTIVATE_OBJECTS, data)
+    this.changeObjectsStateInEngine(data, 'deactivate')
   }
 
   changeObjectsStateInEngine(
-    labels: string[],
+    data: ActivateObjectsMessageData | DeactivateObjectsMessageData,
     state: 'activate' | 'deactivate'
   ) {
     if (!this.userId) return
 
     if (state === 'activate') {
-      this.engine.game.handleActivateObjects(labels)
-      this.reconciliationEngine.game.handleActivateObjects(labels)
+      this.engine.game.handleActivateObjects(data)
+      this.reconciliationEngine.game.handleActivateObjects(data)
     } else {
-      this.engine.game.handleDeactivateObjects(labels)
-      this.reconciliationEngine.game.handleDeactivateObjects(labels)
+      this.engine.game.handleDeactivateObjects(data)
+      this.reconciliationEngine.game.handleDeactivateObjects(data)
     }
 
-    // const eventName =
-    //   GameEventName[state ? 'ACTIVATE_OBJECTS' : 'DEACTIVATE_OBJECTS']
-    // const eventData: ActivateObjectsEventData | DeactivateObjectsEventData = {
-    //   name: eventName,
-    //   frame: this.localEngine.frame,
-    //   time: this.localEngine.frameTimestamp,
-    //   labels,
-    //   playerId: this.userId,
-    // }
-    // const mapActiveObjects: string[] = []
-    // const clientSnapshot = this.localEngine.snapshots.vault.getLast()
-    // if (!clientSnapshot) {
-    //   console.warn(
-    //     'Last client snapshot when changing object state was not found'
-    //   )
-    //   return
-    // }
-
-    // this.localEngine.game.world.map?.activePaddles.forEach((label) => {
-    //   mapActiveObjects.push(label)
-    // })
-
-    // clientSnapshot.mapActiveObjects = mapActiveObjects
-    // clientSnapshot.events.push({
-    //   event: eventName,
-    //   data: JSON.stringify(eventData),
-    // })
-
-    // this.localEngine.snapshots.vault.remove(
-    //   this.localEngine.snapshots.vault.size - 1
-    // )
-    // this.localEngine.snapshots.vault.unsafe_addWithoutSort(clientSnapshot)
+    const eventName =
+      GameEventName[state ? 'ACTIVATE_OBJECTS' : 'DEACTIVATE_OBJECTS']
+    const eventData: ActivateObjectsEventData | DeactivateObjectsEventData = {
+      ...data,
+      name: eventName,
+      frame: this.reconciliationEngine.frame,
+      time: this.reconciliationEngine.frameTimestamp,
+      playerId: this.userId,
+    }
+    const event = {
+      event: eventName,
+      data: JSON.stringify(eventData),
+    }
+    const currentFrameEvents =
+      this.unconfirmedEvents.get(this.reconciliationEngine.frame) || []
+    const newCurrentFrameEvents: SnapshotEvent[] = [
+      ...currentFrameEvents,
+      event,
+    ]
+    this.unconfirmedEvents.set(
+      this.reconciliationEngine.frame,
+      newCurrentFrameEvents
+    )
+    console.log(
+      'Added an unconfirmed event at frame',
+      this.reconciliationEngine.frame,
+      newCurrentFrameEvents
+    )
   }
 
   onKeyDown(e: KeyboardEvent) {

@@ -11,6 +11,10 @@ import {
 } from '@pinball/shared'
 import { Pinball } from './Pinball'
 import { Game } from './Game'
+import {
+  ActivateObjectsMessageData,
+  DeactivateObjectsMessageData,
+} from './GameEvent'
 
 export enum WorldEvents {
   PLAYER_SPAWN = 'player_spawn',
@@ -169,24 +173,24 @@ export class World extends EventEmitter<WorldEmitterEvents> {
     })
   }
 
-  public handleActivateObjects(labels: string[]) {
-    this.game.handleActivateObjects(labels)
+  public handleActivateObjects(data: ActivateObjectsMessageData) {
+    this.game.handleActivateObjects(data)
 
     if (this.game.me) {
       this.eventEmitter.emit(WorldEvents.ACTIVATE_OBJECTS, {
         playerId: this.game.me.id,
-        labels,
+        labels: data.labels,
       })
     }
   }
 
-  public handleDeactivateObjects(labels: string[]) {
-    this.game.handleDeactivateObjects(labels)
+  public handleDeactivateObjects(data: DeactivateObjectsMessageData) {
+    this.game.handleDeactivateObjects(data)
 
     if (this.game.me) {
       this.eventEmitter.emit(WorldEvents.DEACTIVATE_OBJECTS, {
         playerId: this.game.me.id,
-        labels,
+        labels: data.labels,
       })
     }
   }

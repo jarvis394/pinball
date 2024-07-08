@@ -1,0 +1,30 @@
+FROM node:20-alpine as build
+
+WORKDIR /app
+
+COPY package.json .
+COPY yarn.lock .
+
+RUN yarn
+
+COPY apps/multiplayer ./apps/multiplayer
+COPY libs ./libs
+COPY prisma ./prisma
+COPY tsconfig.base.json ./tsconfig.base.json
+COPY .env ./.env
+COPY nx.json ./nx.json
+
+RUN yarn nx reset
+RUN yarn prisma generate
+RUN yarn nx run multiplayer:build:production
+
+FROM node:20-alpine as production
+
+WORKDIR /app
+
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/dist/apps/multiplayer ./dist
+COPY --from=build /app/prisma .
+COPY --from=build /app/package.json .
+
+CMD [ "node", "dist/main.js" ]

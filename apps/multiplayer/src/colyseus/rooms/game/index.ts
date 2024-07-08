@@ -384,15 +384,23 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
     )
   }
 
-  handleActivateObjects(client: Client, labels: string[]) {
+  handleActivateObjects(
+    client: Client,
+    data: Pick<
+      ActivateObjectsEventData,
+      'localEventId' | 'fromLocalFrame' | 'labels'
+    >
+  ) {
     if (!client.userData?.userId) return
 
-    this.gameController.handleActivateObjects(client, labels)
+    this.gameController.handleActivateObjects(client, data)
 
     const eventData: ActivateObjectsEventData = {
       name: GameEventName.ACTIVATE_OBJECTS,
       playerId: client.userData?.userId,
-      labels,
+      labels: data.labels,
+      localEventId: data.localEventId,
+      fromLocalFrame: data.fromLocalFrame,
       frame: this.state.frame,
       time: this.state.timestamp,
     }
@@ -402,15 +410,23 @@ export class GameRoom extends Room<GameRoomState, GameRoomMetadata> {
     )
   }
 
-  handleDeactivateObjects(client: Client, labels: string[]) {
+  handleDeactivateObjects(
+    client: Client,
+    data: Pick<
+      DeactivateObjectsEventData,
+      'localEventId' | 'fromLocalFrame' | 'labels'
+    >
+  ) {
     if (!client.userData?.userId) return
 
-    this.gameController.handleDeactivateObjects(client, labels)
+    this.gameController.handleDeactivateObjects(client, data)
 
     const eventData: DeactivateObjectsEventData = {
       name: GameEventName.DEACTIVATE_OBJECTS,
       playerId: client.userData.userId,
-      labels,
+      labels: data.labels,
+      localEventId: data.localEventId,
+      fromLocalFrame: data.fromLocalFrame,
       frame: this.state.frame,
       time: this.state.timestamp,
     }

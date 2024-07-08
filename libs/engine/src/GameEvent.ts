@@ -34,6 +34,11 @@ export type GameEventData = {
   name: GameEventName
 }
 
+export type GameEventWithLocalId = {
+  localEventId: number
+  fromLocalFrame: number
+}
+
 export type InitEventData = GameEventData & {
   name: GameEventName.INIT
   players: Record<string, User>
@@ -67,17 +72,19 @@ export type GameResultsEventData = GameEventData & {
   eloChange: Record<string, GameResultsEloChange>
 }
 
-export type ActivateObjectsEventData = GameEventData & {
-  name: GameEventName.ACTIVATE_OBJECTS
-  playerId: string
-  labels: string[]
-}
+export type ActivateObjectsEventData = GameEventData &
+  GameEventWithLocalId & {
+    name: GameEventName.ACTIVATE_OBJECTS
+    playerId: string
+    labels: string[]
+  }
 
-export type DeactivateObjectsEventData = GameEventData & {
-  name: GameEventName.DEACTIVATE_OBJECTS
-  playerId: string
-  labels: string[]
-}
+export type DeactivateObjectsEventData = GameEventData &
+  GameEventWithLocalId & {
+    name: GameEventName.DEACTIVATE_OBJECTS
+    playerId: string
+    labels: string[]
+  }
 
 export type PingObjectsEventData = GameEventData & {
   name: GameEventName.PING_OBJECTS
@@ -115,3 +122,9 @@ export class GameEvent<T extends keyof GameEventsMap = GameEventName> {
     this.data = data
   }
 }
+
+export type ActivateObjectsMessageData = GameEventWithLocalId &
+  Pick<ActivateObjectsEventData, 'labels'>
+
+export type DeactivateObjectsMessageData = GameEventWithLocalId &
+  Pick<DeactivateObjectsEventData, 'labels'>

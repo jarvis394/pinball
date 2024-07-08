@@ -287,12 +287,10 @@ export class GameMap {
 
   public handleActivatePaddle(paddle: Paddle) {
     paddle.activate()
-    this.world.handleActivateObjects([paddle.fieldObject.label])
   }
 
   public handleDeactivatePaddle(paddle: Paddle) {
     paddle.deactivate()
-    this.world.handleDeactivateObjects([paddle.fieldObject.label])
   }
 
   public update() {

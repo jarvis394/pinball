@@ -2,7 +2,12 @@ import { World, WorldEmitterEvents, WorldEvents } from './World'
 import { Player } from './Player'
 import { Engine } from './Engine'
 import { GameMapData } from '@pinball/shared'
-import { GameEvent, GameEventName } from './GameEvent'
+import {
+  ActivateObjectsMessageData,
+  DeactivateObjectsMessageData,
+  GameEvent,
+  GameEventName,
+} from './GameEvent'
 
 export class Game {
   /** Game duration in ms */
@@ -59,33 +64,37 @@ export class Game {
     )
   }
 
-  public handleActivateObjects(labels: string[]) {
+  public handleActivateObjects(data: ActivateObjectsMessageData) {
     if (!this.me) return
 
-    labels.forEach((label) => this.world.map?.activePaddles.add(label))
+    data.labels.forEach((label) => this.world.map?.activePaddles.add(label))
 
     this.events.push(
       new GameEvent(GameEventName.ACTIVATE_OBJECTS, {
         name: GameEventName.ACTIVATE_OBJECTS,
         frame: this.engine.frame,
         time: this.engine.frameTimestamp,
-        labels,
+        localEventId: data.localEventId,
+        fromLocalFrame: data.fromLocalFrame,
+        labels: data.labels,
         playerId: this.me.id,
       })
     )
   }
 
-  public handleDeactivateObjects(labels: string[]) {
+  public handleDeactivateObjects(data: DeactivateObjectsMessageData) {
     if (!this.me) return
 
-    labels.forEach((label) => this.world.map?.activePaddles.delete(label))
+    data.labels.forEach((label) => this.world.map?.activePaddles.delete(label))
 
     this.events.push(
       new GameEvent(GameEventName.DEACTIVATE_OBJECTS, {
         name: GameEventName.DEACTIVATE_OBJECTS,
         frame: this.engine.frame,
         time: this.engine.frameTimestamp,
-        labels,
+        localEventId: data.localEventId,
+        fromLocalFrame: data.fromLocalFrame,
+        labels: data.labels,
         playerId: this.me.id,
       })
     )
